@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="cloud.js"></script>
+<script src="cloud.js?v=2"></script>
 <title>DSE 矩阵选题工作台</title>
 <style>
   :root{
@@ -2863,7 +2863,7 @@ function renderMaterialPanel(){
 
 /* =========================================================
    13. 复盘：今日实时复盘 + 本周按天分块复盘
-   数据全部来自「导入员工汇总码」，导入后自动刷新
+   数据来自员工登录后的自动同步（网站版，几秒内刷新）；离线版用「导入员工汇总码」
    ========================================================= */
 function pad2(n){ return (n<10?'0':'')+n; }
 function localDate(d){ const x=d||new Date(); return x.getFullYear()+'-'+pad2(x.getMonth()+1)+'-'+pad2(x.getDate()); }
@@ -2901,13 +2901,13 @@ function bindPersonaChips(rerender){
   $$('#panelBody [data-pfilter]').forEach(el=> el.onclick = ()=>{ state.personaFilter = el.dataset.pfilter; save(); rerender(); });
 }
 function sumNotes(rows){
-  const t={n:0,cx:0,like:0,cmt:0,emp:{}};
+  const t={n:0,cx:0,like:0,cmt:0,views:0,emp:{}};
   rows.forEach(r=>{
     const x=r.x, nm=r.emp.name;
-    t.n++; t.cx+=+x.cx||0; t.like+=+x.like||0; t.cmt+=+x.cmt||0;
-    if(!t.emp[nm]) t.emp[nm]={n:0,cx:0,titles:[]};
+    t.n++; t.cx+=+x.cx||0; t.like+=+x.like||0; t.cmt+=+x.cmt||0; t.views+=+x.views||0;
+    if(!t.emp[nm]) t.emp[nm]={n:0,cx:0,views:0,titles:[]};
     const o=t.emp[nm];
-    o.n++; o.cx+=+x.cx||0;
+    o.n++; o.cx+=+x.cx||0; o.views+=+x.views||0;
     if(x.title) o.titles.push(x.title);
   });
   return t;
@@ -2960,7 +2960,7 @@ function renderReviewPanel(){
   const missing = emps.filter(e=>!reportedToday[e.name]).map(e=>e.name);
   const tEmpLines = Object.keys(T.emp).map(nm=>{
     const o=T.emp[nm];
-    return '<div class="ln"><b>'+esc(nm)+'</b> · '+o.n+' 篇 · <b>客资 '+o.cx+'</b>'+
+    return '<div class="ln"><b>'+esc(nm)+'</b> · '+o.n+' 篇 · <b>客资 '+o.cx+'</b> · 浏览 '+o.views+
       (o.titles.length?' · '+esc(o.titles.slice(0,3).join(' / ')):'')+'</div>';
   }).join('');
   const tCxByEmp = {};
@@ -2978,7 +2978,7 @@ function renderReviewPanel(){
     const detail = S.n
       ? Object.keys(S.emp).map(nm=>{
           const o=S.emp[nm];
-          return '<div class="ln"><b>'+esc(nm)+'</b> · '+o.n+' 篇 · <b>客资 '+o.cx+'</b>'+
+          return '<div class="ln"><b>'+esc(nm)+'</b> · '+o.n+' 篇 · <b>客资 '+o.cx+'</b> · 浏览 '+o.views+
             (o.titles.length?' · '+esc(o.titles.slice(0,2).join(' / ')):'')+'</div>';
         }).join('')
       : '<div class="c-note">当天没有上报</div>';
@@ -2986,6 +2986,7 @@ function renderReviewPanel(){
       '<span class="nm">'+esc(ds.slice(5))+' '+esc(weekdayOf(ds))+(ds===today?' · 今天':'')+'</span>'+
       '<span class="tag">笔记 '+S.n+'</span>'+
       '<span class="tag cat-conv">客资 '+S.cx+'</span>'+
+      '<span class="tag">浏览 '+S.views+'</span>'+
       '<span class="tag">赞 '+S.like+' / 评 '+S.cmt+'</span></div>'+
       '<div class="adm-detail">'+detail+'</div></div>';
   }
@@ -2999,14 +3000,14 @@ function renderReviewPanel(){
   Object.keys(byEmpCx).forEach(nm=>{ const o=byEmpCx[nm]; o.u=Math.max(0,o.cx-o.p-o.o); });
   const rankRows = Object.keys(W.emp).sort((a,b)=>W.emp[b].cx-W.emp[a].cx).map(nm=>{
     const o=W.emp[nm], l=byEmpCx[nm]||{cx:0,p:0,o:0,u:0};
-    return '<tr><td>'+esc(nm)+'</td><td>'+o.n+'</td><td><b>'+o.cx+'</b></td><td>'+l.p+'</td><td>'+l.o+'</td><td style="color:#999">'+l.u+'</td></tr>';
+    return '<tr><td>'+esc(nm)+'</td><td>'+o.n+'</td><td>'+o.views+'</td><td><b>'+o.cx+'</b></td><td>'+l.p+'</td><td>'+l.o+'</td><td style="color:#999">'+l.u+'</td></tr>';
   }).join('');
   const diffCx = W.cx - P.cx;
   const WK = cxSplit(weekCx);
 
   $('#panelBody').innerHTML =
     '<div style="padding:12px">'+
-      '<div class="hint-box"><b>复盘只给主管看，员工那边没有复盘。</b>数据来自员工发的汇总码：<b>导入/刷新后这里立刻更新</b>。<br>'+
+      '<div class="hint-box"><b>复盘只给主管看，员工那边没有复盘。</b>员工用你录入的昵称登录员工版后，上报的数据<b>几秒内自动同步到这里，不用发汇总码</b>；离线版仍可用「导入员工汇总码」。<br>'+
         '下面先是你<b>今天的实时复盘</b>，再是<b>最近 7 天按天分块的周复盘</b>；点「一键汇总本周」把所有数据合成一段，直接发给团队或贴到飞书。</div>'+
       personaChips()+
       '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'+
@@ -3019,6 +3020,7 @@ function renderReviewPanel(){
       '<div class="stat-grid">'+
         '<div class="stat"><div class="k">今日笔记</div><div class="v">'+T.n+'</div></div>'+
         '<div class="stat"><div class="k">今日客资</div><div class="v">'+T.cx+'</div></div>'+
+        '<div class="stat"><div class="k">今日总浏览</div><div class="v">'+T.views+'</div></div>'+
         '<div class="stat"><div class="k">今日赞 / 评</div><div class="v" style="font-size:14px">'+T.like+' / '+T.cmt+'</div></div>'+
         '<div class="stat"><div class="k">已上报人数</div><div class="v" style="font-size:14px">'+Object.keys(reportedToday).length+' / '+emps.length+'</div></div>'+
       '</div>'+
@@ -3031,15 +3033,16 @@ function renderReviewPanel(){
       '<div class="stat-grid">'+
         '<div class="stat"><div class="k">本周笔记</div><div class="v">'+W.n+'</div></div>'+
         '<div class="stat"><div class="k">本周客资</div><div class="v">'+W.cx+'</div></div>'+
+        '<div class="stat"><div class="k">本周总浏览</div><div class="v">'+W.views+'</div></div>'+
         '<div class="stat"><div class="k">家长 / 其他人</div><div class="v" style="font-size:14px">'+WK.p+' / '+WK.oth+'</div></div>'+
         '<div class="stat"><div class="k">比上周客资</div><div class="v" style="font-size:14px">'+(diffCx>0?'+':'')+diffCx+'</div></div>'+
         '<div class="stat"><div class="k">本周赞 / 评</div><div class="v" style="font-size:14px">'+W.like+' / '+W.cmt+'</div></div>'+
       '</div>'+
-      (emps.length? dayCards : '<div class="empty-tip">还没有员工数据<br>让员工在员工版点「导出汇总码」发给你，点上面「导入员工汇总码」即可</div>')+
+      (emps.length? dayCards : '<div class="empty-tip">还没有员工数据<br>员工用你录入的昵称登录员工版后，这里会自动出现（不用发汇总码）<br>如果员工已经登录还是空的，多半是他还没在「我的选题」里点「＋ 登记账号」填昵称和主页链接</div>')+
       '<div class="divider"></div>'+
       '<h4 style="font-size:12.5px;margin:0 0 8px">本周按员工汇总</h4>'+
       (rankRows
-        ? '<div style="overflow-x:auto"><table class="tb"><thead><tr><th>员工</th><th>笔记</th><th>客资</th><th>家长</th><th>其他人</th><th>未标注</th></tr></thead><tbody>'+rankRows+'</tbody></table></div>'
+        ? '<div style="overflow-x:auto"><table class="tb"><thead><tr><th>员工</th><th>笔记</th><th>浏览</th><th>客资</th><th>家长</th><th>其他人</th><th>未标注</th></tr></thead><tbody>'+rankRows+'</tbody></table></div>'
         : '<div class="empty-tip">本周还没有上报数据</div>')+
       '<div class="c-note" style="margin-top:10px;line-height:1.9">家长 / 其他人 / 未标注 来自「客资统计」页里你对每篇笔记的标注。</div>'+
     '</div>';
@@ -3066,12 +3069,12 @@ function buildWeekSummary(){
   const pf=personaFilterOf();
   const lines=[];
   lines.push('DSE 矩阵复盘 · '+from+' ~ '+today+(pf!=='全部'?'（人设：'+pf+'）':''));
-  lines.push('本周合计：笔记 '+W.n+' · 客资 '+W.cx+'（家长 '+WK.p+' / 其他人 '+WK.oth+' / 未标注 '+WK.u+'）· 点赞 '+W.like+' · 评论 '+W.cmt);
+  lines.push('本周合计：笔记 '+W.n+' · 浏览 '+W.views+' · 客资 '+W.cx+'（家长 '+WK.p+' / 其他人 '+WK.oth+' / 未标注 '+WK.u+'）· 点赞 '+W.like+' · 评论 '+W.cmt);
   for(let i=0;i<7;i++){
     const ds=shiftDate(today,-i);
     const S=sumNotes(rows.filter(r=>r.date===ds));
     lines.push('');
-    lines.push('【'+ds+' '+weekdayOf(ds)+'】笔记 '+S.n+' · 客资 '+S.cx+' · 赞 '+S.like+' · 评 '+S.cmt);
+    lines.push('【'+ds+' '+weekdayOf(ds)+'】笔记 '+S.n+' · 浏览 '+S.views+' · 客资 '+S.cx+' · 赞 '+S.like+' · 评 '+S.cmt);
     if(!S.n){ lines.push('  · 当天没有上报'); continue; }
     Object.keys(S.emp).forEach(nm=>{
       const o=S.emp[nm];
@@ -3091,11 +3094,11 @@ function exportWeekCsv(){
   const rows=allNotes().filter(r=> r.date>=from && r.date<=today && matchPersona(r.emp,r.x));
   if(!rows.length){ toast('本周还没有上报数据'); return; }
   const analysis=admAnalysis(), meta=cxMetaAll();
-  const head=['日期','员工','人设','账号','账号主页','笔记标题','笔记链接','点赞','评论','客资','家长','其他人','来源方式','备注','我的分析'];
+  const head=['日期','员工','人设','账号','账号主页','笔记标题','笔记链接','浏览量','点赞','评论','客资','家长','其他人','来源方式','备注','我的分析'];
   const body=rows.map(r=>{
     const x=r.x, m=meta[cxKey(r.emp.ns,x.id)]||{};
     return [r.date, r.emp.name, notePersona(r.emp,x), x.acct||'', x.acctLink||'', x.title||'', x.link||'',
-      +x.like||0, +x.cmt||0, +x.cx||0, +m.parent||0, +m.other||0, m.src||'', m.note||'',
+      +x.views||0, +x.like||0, +x.cmt||0, +x.cx||0, +m.parent||0, +m.other||0, m.src||'', m.note||'',
       analysis[r.emp.ns+'|'+x.id]||''];
   });
   downloadCsv('DSE复盘_'+from+'~'+today+'.csv', head, body);
@@ -3483,7 +3486,7 @@ function renderTeamPanel(){
     '<div style="padding:12px">'+
       '<div class="hint-box"><b>员工在员工版填一次，你在这里一键看全部。</b><br>'+
         '员工第一次只登记<b>账号名 + 主页链接 + 人设方向（摘星 / 遵理）</b>（固定，不用每天重填），之后每篇笔记只填：标题、文案、链接、日期、点赞、评论、<b>这篇带来多少客资</b>。<br>'+
-        '填完点右上角「导出汇总码」发给你，你点下面「导入员工汇总码」，这里就有全部数据。<br>'+
+        '员工用你录入的昵称登录员工版，填完就会<b>自动同步</b>到这里，不用发汇总码（离线版才需要导出/导入汇总码）。<br>'+
         '员工不登录飞书、不用填第二遍；复盘和分析由你在「每日上报」那张表里写。</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'+
         '<button class="btn primary" id="tmImport">📥 导入员工汇总码</button>'+
@@ -3497,7 +3500,7 @@ function renderTeamPanel(){
       '</div>'+
       '<div class="divider"></div>'+
       '<h4 style="font-size:12.5px;margin:0 0 8px">每个员工的数据</h4>'+
-      (cards || '<div class="empty-tip">还没有员工数据<br>让员工导出汇总码发给你，再点上面「导入员工汇总码」</div>')+
+      (cards || '<div class="empty-tip">还没有员工数据<br>员工用你录入的昵称登录员工版后，这里会自动出现<br>如果一直空着，让他先「＋ 登记账号」填昵称和主页链接</div>')+
       '<div class="c-note" style="margin-top:10px;line-height:1.9">飞书多维表格只是可选的备份/查看方式，不是必填流程；员工不需要登录飞书，也不需要再填一遍表单。</div>'+
     '</div>';
   const ti = $('#tmImport'); if(ti) ti.onclick = openImportEmpCode;
@@ -3641,7 +3644,7 @@ function fallbackCopy(t){
 function dailyText(x){
   return '账号：'+(x.acct||'')+'\n账号链接：'+(x.acctLink||'')+
     '\n笔记标题：'+x.title+'\n笔记链接：'+(x.link||'')+'\n发布日期：'+x.date+
-    '\n点赞：'+(x.like||0)+'\n评论：'+(x.cmt||0)+
+    '\n点赞：'+(x.like||0)+'\n评论：'+(x.cmt||0)+'\n浏览量：'+(x.views||0)+
     '\n客资（加到几个微信）：'+(x.cx||0)+
     '\n备注：'+(x.note||'')+
     '\n文案：\n'+(x.body||'');
@@ -3654,11 +3657,11 @@ function renderDailyPanel(){
   const analysis = admAnalysis();
   const notes = {};
   const rows = [];
-  const T = {n:0, cx:0, like:0, cmt:0};
+  const T = {n:0, cx:0, like:0, cmt:0, views:0};
   emps.forEach(e=>{
     (e.daily||[]).forEach(x=>{
       if(!matchPersona(e,x)) return;
-      T.n++; T.cx += +x.cx||0; T.like += +x.like||0; T.cmt += +x.cmt||0;
+      T.n++; T.cx += +x.cx||0; T.like += +x.like||0; T.cmt += +x.cmt||0; T.views += +x.views||0;
       const k = e.ns+'|'+x.id;
       notes[k] = x;
       const per = notePersona(e,x);
@@ -3671,7 +3674,7 @@ function renderDailyPanel(){
         '</div>'+
         '<div style="font-size:11.5px;color:#8a8f99;margin-top:4px">'+
           '账号：'+esc(x.acct||'—')+(x.acctLink?' <a href="'+esc(x.acctLink)+'" target="_blank" rel="noopener">主页↗</a>':'')+
-          ' · 赞 '+(x.like||0)+' · 评 '+(x.cmt||0)+
+          ' · 浏览 '+(x.views||0)+' · 赞 '+(x.like||0)+' · 评 '+(x.cmt||0)+
           ' · <b style="color:#c2410c">客资 '+(x.cx||0)+'</b>'+
         '</div>'+
         '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center">'+
@@ -3684,7 +3687,7 @@ function renderDailyPanel(){
   $('#panelBody').innerHTML =
     '<div style="padding:12px">'+
       '<div class="hint-box"><b>这里是全员的笔记数据，只用来给你看和分析。</b><br>'+
-        '员工在员工版点「导出汇总码」发给你 → 你点「导入员工汇总码」→ 每个员工每篇笔记的<b>账号、链接、标题、文案、点赞、评论、客资</b>都会出现在下面。<br>'+
+        '员工用你录入的昵称登录员工版、上报之后，数据会<b>自动同步</b>到这里：每个员工每篇笔记的<b>账号、主页、链接、标题、文案、点赞、评论、客资</b>都会出现（离线版才需要导汇总码）。<br>'+
         '员工只上报数据，复盘/分析由你在这张表最后一列写，不会同步给员工。</div>'+
       personaChips()+
       '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'+
@@ -3695,13 +3698,14 @@ function renderDailyPanel(){
       '<div class="stat-grid">'+
         '<div class="stat"><div class="k">笔记数</div><div class="v">'+T.n+'</div></div>'+
         '<div class="stat"><div class="k">总客资</div><div class="v">'+T.cx+'</div></div>'+
+        '<div class="stat"><div class="k">总浏览量</div><div class="v">'+T.views+'</div></div>'+
         '<div class="stat"><div class="k">总点赞 / 评论</div><div class="v" style="font-size:14px">'+T.like+' / '+T.cmt+'</div></div>'+
       '</div>'+
       '<div class="divider"></div>'+
       '<h4 style="font-size:12.5px;margin:0 0 8px">全员笔记明细 <span style="font-size:11px;color:#999">（一篇一块，看客资）</span></h4>'+
       (rows.length
         ? rows.join('')
-        : '<div class="empty-tip">还没有员工数据<br>让员工在员工版点「导出汇总码」发给你，再点上面的「导入员工汇总码」</div>')+
+        : '<div class="empty-tip">还没有员工数据<br>员工用你录入的昵称登录员工版、上报后这里会自动出现（不用发汇总码）</div>')+
     '</div>';
   bindPersonaChips(renderDailyPanel);
   const impBtn = $('#dpImport'); if(impBtn) impBtn.onclick = openImportEmpCode;
@@ -3714,7 +3718,7 @@ function renderDailyPanel(){
         if(!matchPersona(e,x)) return;
         const per = notePersona(e,x);
         lines.push('【'+e.name+'】'+(x.acct||'')+(per?'（'+per+'）':'')+' · '+x.date+' · '+(x.title||''));
-        lines.push('点赞 '+(x.like||0)+' · 评论 '+(x.cmt||0)+' · 客资 '+(x.cx||0));
+        lines.push('浏览量 '+(x.views||0)+' · 点赞 '+(x.like||0)+' · 评论 '+(x.cmt||0)+' · 客资 '+(x.cx||0));
         lines.push('链接：'+(x.link||''));
         lines.push('文案：'+(x.body||'').replace(/\n/g,' '));
         const k = e.ns+'|'+x.id; if(analysis[k]) lines.push('我的分析：'+analysis[k]);
@@ -3743,6 +3747,14 @@ function renderDailyPanel(){
    ========================================================= */
 function listEmployees(){
   const out = [], seen = {};
+  /* 主管录入的员工名单（网站版才有；离线版为空） */
+  let roster = [];
+  try{ roster = lsGet('dse_admin_roster_cache', []) || []; }catch(e){ roster = []; }
+  const rosterName = ns => {
+    const hit = roster.find(r=> r && (r.ns===ns || (!r.ns && r.name && ('u_'+hashStr(String(r.name)).toString(36))===ns)));
+    return hit ? String(hit.name||'') : '';
+  };
+  /* ① 已同步下来的员工数据（本地键 dse_wb_u_xxx_who_v2） */
   for(let i=0;i<localStorage.length;i++){
     const k = localStorage.key(i);
     const m = k && k.match(/^dse_wb_(u_[a-z0-9]+)_who_v2$/);
@@ -3754,18 +3766,38 @@ function listEmployees(){
     const topics = g('topics', []) || [];
     const drafts = g('drafts', {}) || {};
     const daily = g('daily', []) || [];
-    out.push({ns, name:g('who','')||ns, accounts, topics, drafts, daily,
+    out.push({ns, name:(g('who','')||rosterName(ns)||ns), accounts, topics, drafts, daily,
       draftCount:Object.keys(drafts).length,
+      views:daily.reduce((a,x)=>a+(+x.views||0),0),
       imp:daily.reduce((a,x)=>a+(+x.imp||0),0), like:daily.reduce((a,x)=>a+(+x.like||0),0),
       cx:daily.reduce((a,x)=>a+(+x.cx||0),0)});
   }
+  /* ② 名单里有、但还没同步到任何数据的员工也列出来（显示「还没同步」而不是凭空消失） */
+  roster.forEach(r=>{
+    const nm = String((r&&r.name)||'').trim(); if(!nm) return;
+    const ns = String((r&&r.ns)||'') || ('u_'+hashStr(nm).toString(36));
+    if(!/^u_[a-z0-9]+$/.test(ns) || seen[ns]) return;
+    seen[ns] = 1;
+    out.push({ns, name:nm, accounts:[], topics:[], drafts:{}, daily:[], draftCount:0,
+      views:0, imp:0, like:0, cx:0, empty:true});
+  });
   return out.sort((a,b)=>(b.daily.length+b.draftCount)-(a.daily.length+a.draftCount));
 }
 function adminEmpCard(e){
-  const per = e.accounts.map(a=>esc(a.name)+(a.persona?'<span class="tag src-'+esc(a.persona)+'">'+esc(a.persona)+'</span>':'')+(a.link?' <a href="'+esc(a.link)+'" target="_blank" rel="noopener">主页↗</a>':' <span style="color:#b25e00">缺主页链接</span>')).join('、') || '—';
+  const per = e.accounts.map(a=>esc(a.name)+(a.persona?'<span class="tag src-'+esc(a.persona)+'">'+esc(a.persona)+'</span>':'')+(a.link?' <a href="'+esc(a.link)+'" target="_blank" rel="noopener">主页↗</a>':' <span style="color:#b25e00">缺主页链接</span>')).join('、') || '<span style="color:#b25e00">还没登记账号：让他打开员工版 →「我的选题」→「＋ 登记账号」，填昵称 + 主页链接（只填一次）</span>';
   const tp = e.topics.slice(0,6).map(t=>'· '+esc(t.title)).join('<br>');
+  if(e.empty){
+    return '<div class="adm-emp">'+
+      '<div class="hd"><span class="nm">'+esc(e.name)+'</span>'+
+        '<span class="tag">人设 0</span><span class="tag">选题 0</span>'+
+        '<span class="tag">草稿 0</span><span class="tag cat">上报 0</span>'+
+        '<span class="tag cat-conv">客资 0</span></div>'+
+      '<div class="adm-detail"><div class="ln" style="color:#b25e00"><b>还没同步到数据：</b>'+
+        '让他打开员工版，用昵称「'+esc(e.name)+'」登录（不是自己随便起的名字），'+
+        '再进「我的选题」→ 点「＋ 登记账号」填昵称 + 主页链接。他登录后几秒内这里会自动出现，不用发汇总码。</div></div></div>';
+  }
   const dl = e.daily.slice(0,5).map(x=>'· '+esc(x.date)+' '+esc((x.title||'').slice(0,16))+
-    (x.acct?' · '+esc(x.acct):'')+' · 赞'+(x.like||0)+' 评'+(x.cmt||0)+' · <b>客资'+(x.cx||0)+'</b>'+
+    (x.acct?' · '+esc(x.acct):'')+' · 浏览'+(x.views||0)+' · 赞'+(x.like||0)+' 评'+(x.cmt||0)+' · <b>客资'+(x.cx||0)+'</b>'+
     (x.link? ' · <a href="'+esc(x.link)+'" target="_blank" rel="noopener">看已发内容 ↗</a>' : ' · <span style="color:#b25e00">未回填链接</span>')).join('<br>');
   const df = Object.keys(e.drafts||{}).slice(0,4).map(k=>{
     const d = e.drafts[k]||{};
@@ -3778,6 +3810,7 @@ function adminEmpCard(e){
       '<span class="tag">选题 '+e.topics.length+'</span>'+
       '<span class="tag">草稿 '+e.draftCount+'</span>'+
       '<span class="tag cat">上报 '+e.daily.length+'</span>'+
+      '<span class="tag">总浏览 '+e.views+'</span>'+
       '<span class="tag cat-conv">客资 '+e.cx+'</span>'+
     '</div>'+
     '<div class="adm-detail">'+
@@ -3828,7 +3861,7 @@ function doImportEmpCode(){
 }
 function renderAdminPanel(){
   const emps = listEmployees();
-  const T = emps.reduce((a,e)=>{ a.per+=e.accounts.length; a.topics+=e.topics.length; a.drafts+=e.draftCount; a.daily+=e.daily.length; a.cx+=e.cx; a.like+=e.like; return a; }, {per:0,topics:0,drafts:0,daily:0,cx:0,like:0});
+  const T = emps.reduce((a,e)=>{ a.per+=e.accounts.length; a.topics+=e.topics.length; a.drafts+=e.draftCount; a.daily+=e.daily.length; a.cx+=e.cx; a.like+=e.like; a.views+=e.views; return a; }, {per:0,topics:0,drafts:0,daily:0,cx:0,like:0,views:0});
   $('#panelBody').innerHTML =
     '<div style="padding:12px">'+
       renderRosterCard()+
@@ -3844,6 +3877,7 @@ function renderAdminPanel(){
         '<div class="stat"><div class="k">员工数</div><div class="v">'+emps.length+'</div></div>'+
         '<div class="stat"><div class="k">已上报笔记</div><div class="v">'+T.daily+'</div></div>'+
         '<div class="stat"><div class="k">总客资</div><div class="v">'+T.cx+'</div></div>'+
+        '<div class="stat"><div class="k">总浏览量</div><div class="v">'+T.views+'</div></div>'+
         '<div class="stat"><div class="k">总点赞</div><div class="v">'+T.like+'</div></div>'+
         '<div class="stat"><div class="k">人设 / 选题</div><div class="v" style="font-size:14px">'+T.per+' / '+T.topics+'</div></div>'+
       '</div>'+
@@ -3945,6 +3979,7 @@ function renderRosterCard(){
         [['摘星','摘星'],['遵理','遵理'],['','通用']].map(p=>'<option value="'+p[0]+'"'+(e.persona===p[0]?' selected':'')+'>'+p[1]+'</option>').join('')+
       '</select></td>'+
       '<td><input class="inp rs-pw" data-i="'+i+'" value="'+esc(e.pass||'')+'" placeholder="留空=免密码" style="height:30px;min-width:92px"></td>'+
+      '<td style="font-size:11.5px;min-width:120px">'+empSyncBadge(e.name||'')+'</td>'+
       '<td style="text-align:center"><input type="checkbox" class="rs-on" data-i="'+i+'"'+(e.active!==false?' checked':'')+'></td>'+
       '<td><button class="link-btn rs-del" data-i="'+i+'">删除</button></td>'+
     '</tr>')).join('');
@@ -3953,14 +3988,32 @@ function renderRosterCard(){
       '<span class="tag">已录入 '+list.length+' 人</span>'+
       '<button class="link-btn hot" id="rsAdd">+ 添加员工</button>'+
       '<button class="link-btn" id="rsSave">💾 保存名单</button>'+
+      '<button class="link-btn" id="rsPull">🔄 从云端刷新</button>'+
       '<button class="link-btn" id="rsPass">🔑 改主管口令</button>'+
     '</div>'+
     '<div class="adm-detail">'+
-      '<div class="hint-box">只有这里录入的昵称<b>才能</b>登录员工版；没录入的员工会提示「不在名单里」。<br>人设方向决定他默认出<b>摘星</b>还是<b>遵理</b>的选题；密码留空就是只填昵称即可登录。</div>'+
+      '<div class="hint-box">只有这里录入的昵称<b>才能</b>登录员工版；没录入的员工会提示「不在名单里」。<br>人设方向决定他默认出<b>摘星</b>还是<b>遵理</b>的选题；密码留空就是只填昵称即可登录。<br><b>员工一登录、上报，数据会自动同步到你这里</b>（下面「同步状态」能看到），<b>不需要他发汇总码</b>。</div>'+
       (list.length
-        ? '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px"><thead><tr style="text-align:left;color:#8b8f99"><th style="padding:4px 6px">昵称</th><th style="padding:4px 6px">人设方向</th><th style="padding:4px 6px">密码</th><th style="text-align:center;padding:4px 6px">启用</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+        ? '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px"><thead><tr style="text-align:left;color:#8b8f99"><th style="padding:4px 6px">昵称</th><th style="padding:4px 6px">人设方向</th><th style="padding:4px 6px">密码</th><th style="padding:4px 6px">同步状态</th><th style="text-align:center;padding:4px 6px">启用</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
         : '<div class="empty-tip">还没有录入员工，点上面「+ 添加员工」写昵称，再点「保存名单」</div>')+
     '</div></div>';
+}
+function empSyncBadge(nm){
+  const nm2 = String(nm||'').trim();
+  if(!nm2) return '<span style="color:#999">—</span>';
+  let ns = '';
+  try { ns = 'u_' + hashStr(nm2).toString(36); } catch(e) { return '<span style="color:#999">—</span>'; }
+  const who = lsGet('dse_wb_'+ns+'_who_v2', '');
+  if(!who) return '<span style="color:#b25e00">未登录</span>';
+  const accts = lsGet('dse_wb_'+ns+'_acct_v2', []) || [];
+  const daily = lsGet('dse_wb_'+ns+'_daily_v2', []) || [];
+  const a0 = accts[0] || null;
+  let html = '<span style="color:#1a7f37">已登录</span>';
+  if(!accts.length) html += '<br><span style="color:#b25e00">未登记账号</span>';
+  else if(!(a0 && a0.link)) html += ' · <a href="#" class="rs-nolink" data-ns="'+ns+'">缺主页链接</a>';
+  else html += ' · <a href="'+esc(a0.link)+'" target="_blank" rel="noopener">主页↗</a>';
+  html += '<br><span style="color:#8b8f99">上报 '+daily.length+' 篇</span>';
+  return html;
 }
 function collectRosterForm(){
   const names=$$('.rs-nm'), pfs=$$('.rs-pf'), pws=$$('.rs-pw'), ons=$$('.rs-on');
@@ -3976,6 +4029,16 @@ function bindRosterCard(){
   const add = $('#rsAdd');
   if(add) add.onclick = ()=>{ const l = rosterCache(); l.push({name:'', persona:'', pass:'', active:true}); lsSet(ROSTER_KEY, l); renderAdminPanel(); };
   $$('.rs-del').forEach(b=> b.onclick = ()=>{ const l = rosterCache(); l.splice(+b.dataset.i,1); lsSet(ROSTER_KEY, l); renderAdminPanel(); });
+  $$('.rs-nolink').forEach(a=> a.onclick = (ev)=>{ ev.preventDefault(); toast('这个员工的账号还没填主页链接：让他在员工版「我的选题」→ 点自己的账号 → 补上主页链接'); });
+  const pull = $('#rsPull');
+  if(pull) pull.onclick = ()=>{
+    pull.textContent = '⏳ 刷新中…';
+    Promise.resolve()
+      .then(()=> __cloud.pull())
+      .then(()=> loadRosterCache())
+      .then(()=>{ renderAdminPanel(); toast('已从云端刷新全员数据'); })
+      .catch(()=>{ renderAdminPanel(); toast('刷新失败，请检查网络后重试'); });
+  };
   const sv = $('#rsSave');
   if(sv) sv.onclick = ()=>{
     const list = collectRosterForm();

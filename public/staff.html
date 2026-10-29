@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="cloud.js"></script>
+<script src="cloud.js?v=2"></script>
 <title>DSE 内容工作台 · 员工版</title>
 <style>
   :root{
@@ -771,7 +771,7 @@ function submitPost(){
   const body = $('#pBody').value, tags = $('#pTags').value;
   const a = accById(t.acctId) || activeAcct() || {};
   state.daily.unshift({id:uid(), title, body, link, date:todayStr(),
-    imp:0, like:0, cmt:0, cx:0, note:'', status:'',
+    views:0, imp:0, like:0, cmt:0, cx:0, note:'', status:'',
     acct:a.name||SESSION.name, acctLink:a.link||'', topic:t.title});
   const my = state.topics.find(x=>x.title===t.title); if(my) my.status='done';
   state.daily[0].persona = a.persona || '';
@@ -788,7 +788,7 @@ function submitPost(){
 function dailyText(x){
   return '账号：'+(x.acct||SESSION.name)+'\n账号链接：'+(x.acctLink||'')+
     '\n笔记标题：'+x.title+'\n笔记链接：'+(x.link||'')+'\n发布日期：'+x.date+
-    '\n点赞：'+(x.like||0)+'\n评论：'+(x.cmt||0)+
+    '\n点赞：'+(x.like||0)+'\n评论：'+(x.cmt||0)+'\n浏览量：'+(x.views||0)+
     '\n客资（加到几个微信）：'+(x.cx||0)+
     '\n备注：'+(x.note||'')+
     '\n文案：\n'+(x.body||'');
@@ -804,11 +804,12 @@ function renderDaily(){
   const draftOpts = '<option value="">（手动填 / 或从草稿带出）</option>'+draftKeys.map(k=>'<option value="'+esc(k)+'">'+esc(k.slice(0,28))+'</option>').join('');
   const acctOpts = (state.accounts||[]).map(a=>'<option'+(me&&a.id===me.id?' selected':'')+' value="'+esc(a.name)+'">'+esc(a.name)+'</option>').join('');
   $('#panelBody').innerHTML =
-    '<div class="hint-box">账号只登记<b>一次</b>（账号名 + 主页链接），以后每发一篇笔记只填这一篇的数据，不用每次重填账号。<br>标题、文案、链接、日期从你的草稿带出，你只补<b>点赞、评论、这篇带来多少客资</b>。客资只填<b>数量</b>，微信号直接发群里，主管会按数量统计。</div>'+
+    '<div class="hint-box">账号只登记<b>一次</b>（账号名 + 主页链接），以后每发一篇笔记只填这一篇的数据，不用每次重填账号。<br>标题、文案、链接、日期从你的草稿带出，你只补<b>浏览量、点赞、评论、这篇带来多少客资</b>。客资只填<b>数量</b>，微信号直接发群里，主管会按数量统计。</div>'+
     '<div class="c-note" style="line-height:1.9;margin:-2px 0 10px">我的账号：'+acctLine+'</div>'+
     '<div class="stat-grid">'+
       '<div class="stat"><div class="k">已上报笔记</div><div class="v">'+d.length+'</div></div>'+
       '<div class="stat"><div class="k">总客资（加微信）</div><div class="v">'+sum('cx')+'</div></div>'+
+      '<div class="stat"><div class="k">总浏览量</div><div class="v">'+sum('views')+'</div></div>'+
       '<div class="stat"><div class="k">总点赞 / 评论</div><div class="v" style="font-size:14px">'+sum('like')+' / '+sum('cmt')+'</div></div>'+
     '</div>'+
     '<div class="divider"></div>'+
@@ -821,6 +822,7 @@ function renderDaily(){
       '<div class="field"><label>发布日期</label><input class="inp" id="dDate" type="date" value="'+todayStr()+'"></div>'+
       '<div class="field"><label>点赞</label><input class="inp" id="dLike" type="number" value="0"></div>'+
       '<div class="field"><label>评论</label><input class="inp" id="dCmt" type="number" value="0"></div>'+
+      '<div class="field"><label>浏览量（笔记右下角那个数）</label><input class="inp" id="dViews" type="number" value="0"></div>'+
       '<div class="field full"><label>笔记文案（复制进来，主管要看你写的内容）</label><textarea class="inp" id="dBody" rows="5" placeholder="选「从草稿带出」自动填，或直接粘贴发布时的文案"></textarea></div>'+
       '<div class="field"><label>这篇带来多少客资（加到几个人微信，只填数量）</label><input class="inp" id="dCx" type="number" value="0"></div>'+
       '<div class="field"><label>备注（可空）</label><input class="inp" id="dNote"></div>'+
@@ -829,8 +831,9 @@ function renderDaily(){
     '<div class="divider"></div>'+
     '<h4 class="sec">我上报过的笔记 <span class="sub">（本地保存；点「导出汇总码」发给主管就同步过去了）</span></h4>'+
     (d.length
-      ? '<div style="overflow-x:auto"><table class="tb"><thead><tr><th>日期</th><th>账号</th><th>标题</th><th>点赞</th><th>评论</th><th>客资</th><th></th></tr></thead><tbody>'+
+      ? '<div style="overflow-x:auto"><table class="tb"><thead><tr><th>日期</th><th>账号</th><th>标题</th><th>浏览</th><th>点赞</th><th>评论</th><th>客资</th><th></th></tr></thead><tbody>'+
         d.map(x=>'<tr><td>'+esc(x.date)+'</td><td>'+esc(x.acct||'')+'</td><td title="'+esc(x.title)+'">'+esc((x.title||'').slice(0,14))+'</td>'+
+          '<td><input class="mini" style="width:52px" type="number" value="'+(x.views||0)+'" data-daily="'+x.id+'" data-f="views"></td>'+
           '<td><input class="mini" style="width:44px" type="number" value="'+(x.like||0)+'" data-daily="'+x.id+'" data-f="like"></td>'+
           '<td><input class="mini" style="width:44px" type="number" value="'+(x.cmt||0)+'" data-daily="'+x.id+'" data-f="cmt"></td>'+
           '<td><input class="mini" style="width:44px" type="number" value="'+(x.cx||0)+'" data-daily="'+x.id+'" data-f="cx"></td>'+
@@ -875,11 +878,12 @@ function addDaily(){
   const me = (state.accounts||[]).find(a=>a.name===acctName) || activeAcct() || null;
   state.daily.unshift({id:uid(), title, body:($('#dBody')?$('#dBody').value:''),
     link:($('#dLink').value||'').trim(), date:$('#dDate').value||todayStr(),
+    views:+($('#dViews')?$('#dViews').value:0)||0,
     imp:0, like:+$('#dLike').value||0, cmt:+$('#dCmt').value||0,
     cx, note:($('#dNote')?($('#dNote').value||'').trim():''),
     acct:acctName, acctLink:(me&&me.link)||'', persona:(me&&me.persona)||'', status:''});
   save(); renderDaily(); renderMeta();
-  toast('已上报 · 客资 '+cx+' 个');
+  toast('已上报 · 浏览 '+(+($('#dViews')?$('#dViews').value:0)||0)+' · 客资 '+cx+' 个');
 }
 
 /* 内置素材池：让员工单独拿到这个 html 也能立刻看到素材，不用等主管发同步码。

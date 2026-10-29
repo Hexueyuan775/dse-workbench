@@ -102,7 +102,11 @@
     return req('POST', 'state', { patch: patch }).then(function (d) {
       if (d && d.__status === 401) { saveSess(null); location.replace('index.html'); return; }
       if (d && d.ok !== false){
-        lastRev = (sess && sess.role === 'admin') ? (d.rev || lastRev) : (d.nsRev || lastRev);
+        /* 员工：服务端回的是「自己这个命名空间的版本号」→ 可以安全推进
+           主管：服务端回的是「整库全局版本号」，如果拿它推进，就会把
+                 「员工刚刚推上来的那一版」当成已读跳过，导致主管永远拉不到那份数据。
+                 所以主管的版本号只由 pull(/api/all) 来推进。 */
+        if (sess && sess.role !== 'admin') lastRev = d.nsRev || lastRev;
       }
     }).catch(function () {
       Object.keys(patch).forEach(function (k) { if (!(k in dirty)) dirty[k] = patch[k]; });
