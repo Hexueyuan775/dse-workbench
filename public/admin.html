@@ -3673,7 +3673,7 @@ function renderDailyPanel(){
           '<span class="tag">'+esc(x.date)+'</span>'+
         '</div>'+
         '<div style="font-size:11.5px;color:#8a8f99;margin-top:4px">'+
-          '账号：'+esc(x.acct||'—')+(x.acctLink?' <a href="'+esc(x.acctLink)+'" target="_blank" rel="noopener">主页↗</a>':'')+
+          '账号：'+esc(x.acct||'—')+(x.acctLink?' <a href="'+esc(normLink(x.acctLink))+'" target="_blank" rel="noopener">主页↗</a>':'')+
           ' · 浏览 '+(x.views||0)+' · 赞 '+(x.like||0)+' · 评 '+(x.cmt||0)+
           ' · <b style="color:#c2410c">客资 '+(x.cx||0)+'</b>'+
         '</div>'+
@@ -3745,8 +3745,51 @@ function renderDailyPanel(){
 /* =========================================================
    19. 主管后台
    ========================================================= */
-function listEmployees(){
-  const out = [], seen = {};
+/* 链接修正：员工经常只粘贴 www.xiaohongshu.com/... （没有 https://），
+   直接点到就会变成站内 404。这里统一补上协议头。 */
+function normLink(u){
+  let s = String(u==null?'':u).trim().replace(/^[<（(「\s]+/,'').replace(/[>）)」\s]+$/,'');
+  if(!s) return '';
+  if(/^\/\//.test(s)) return 'https:'+s;
+  if(!/^[a-zA-Z][a-zA-Z0-9+.\-]*:\/\//.test(s)) s = 'https://' + s.replace(/^\/+/, '');
+  return s;
+}
+/* 旧版数据归位：老版页面把员工数据存在 u_1jxyfnsz2 这类旧命名空间里，
+   而且 who（昵称）可能是空的 —— 之前主管端就是因此看到一串代号。
+   这里用「账号昵称」对上名单里的名字，整组键搬到新命名空间，名字和数据都回来。 */
+function mergeOldNs(){
+  let roster = [];
+  try{ roster = lsGet('dse_admin_roster_cache', []) || []; }catch(e){}
+  const names = roster.map(r=>String((r&&r.name)||'').trim()).filter(Boolean);
+  if(!names.length) return 0;
+  const all = [];
+  for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i); if(k) all.push(k); }
+  let n = 0;
+  all.forEach(k=>{
+    const m = String(k).match(/^dse_wb_(u_[a-z0-9]+)_who_v2$/);
+    if(!m) return;
+    const ns = m[1];
+    if(lsGet('dse_wb_'+ns+'_who_v2','')) return;              // who 有值 → 云端同步层会处理
+    const accts = lsGet('dse_wb_'+ns+'_acct_v2', []) || [];
+    const nm = String((accts[0]&&accts[0].name)||'').trim();
+    if(!nm || names.indexOf(nm)<0) return;
+    const canon = 'u_'+hashStr(nm).toString(36);
+    if(canon===ns) return;
+    const pre = 'dse_wb_'+ns+'_', cpre = 'dse_wb_'+canon+'_';
+    all.filter(x=>String(x).indexOf(pre)===0).forEach(x=>{
+      const nk = cpre + String(x).slice(pre.length);
+      if(localStorage.getItem(nk)===null){
+        try{ lsSet(nk, JSON.parse(localStorage.getItem(x))); }catch(e){ lsSet(nk, localStorage.getItem(x)); }
+      }
+      localStorage.removeItem(x);
+      n++;
+    });
+    lsSet('dse_wb_'+canon+'_who_v2', nm);
+  });
+  return n;
+}
+function listEmployees(){  const out = [], seen = {};
+  mergeOldNs();
   /* 主管录入的员工名单（网站版才有；离线版为空） */
   let roster = [];
   try{ roster = lsGet('dse_admin_roster_cache', []) || []; }catch(e){ roster = []; }
@@ -3766,7 +3809,8 @@ function listEmployees(){
     const topics = g('topics', []) || [];
     const drafts = g('drafts', {}) || {};
     const daily = g('daily', []) || [];
-    out.push({ns, name:(g('who','')||rosterName(ns)||ns), accounts, topics, drafts, daily,
+    const nmGuess = g('who','')||rosterName(ns)||((accounts[0]&&accounts[0].name)||'');
+    out.push({ns, name:(nmGuess||'未命名员工'), orphan:!nmGuess, accounts, topics, drafts, daily,
       draftCount:Object.keys(drafts).length,
       views:daily.reduce((a,x)=>a+(+x.views||0),0),
       imp:daily.reduce((a,x)=>a+(+x.imp||0),0), like:daily.reduce((a,x)=>a+(+x.like||0),0),
@@ -3784,7 +3828,7 @@ function listEmployees(){
   return out.sort((a,b)=>(b.daily.length+b.draftCount)-(a.daily.length+a.draftCount));
 }
 function adminEmpCard(e){
-  const per = e.accounts.map(a=>esc(a.name)+(a.persona?'<span class="tag src-'+esc(a.persona)+'">'+esc(a.persona)+'</span>':'')+(a.link?' <a href="'+esc(a.link)+'" target="_blank" rel="noopener">主页↗</a>':' <span style="color:#b25e00">缺主页链接</span>')).join('、') || '<span style="color:#b25e00">还没登记账号：让他打开员工版 →「我的选题」→「＋ 登记账号」，填昵称 + 主页链接（只填一次）</span>';
+  const per = e.accounts.map(a=>esc(a.name)+(a.persona?'<span class="tag src-'+esc(a.persona)+'">'+esc(a.persona)+'</span>':'')+(a.link?' <a href="'+esc(normLink(a.link))+'" target="_blank" rel="noopener">主页↗</a>':' <span style="color:#b25e00">缺主页链接</span>')).join('、') || '<span style="color:#b25e00">还没登记账号：让他打开员工版 →「我的选题」→「＋ 登记账号」，填昵称 + 主页链接（只填一次）</span>';
   const tp = e.topics.slice(0,6).map(t=>'· '+esc(t.title)).join('<br>');
   if(e.empty){
     return '<div class="adm-emp">'+
@@ -3798,7 +3842,7 @@ function adminEmpCard(e){
   }
   const dl = e.daily.slice(0,5).map(x=>'· '+esc(x.date)+' '+esc((x.title||'').slice(0,16))+
     (x.acct?' · '+esc(x.acct):'')+' · 浏览'+(x.views||0)+' · 赞'+(x.like||0)+' 评'+(x.cmt||0)+' · <b>客资'+(x.cx||0)+'</b>'+
-    (x.link? ' · <a href="'+esc(x.link)+'" target="_blank" rel="noopener">看已发内容 ↗</a>' : ' · <span style="color:#b25e00">未回填链接</span>')).join('<br>');
+    (x.link? ' · <a href="'+esc(normLink(x.link))+'" target="_blank" rel="noopener">看已发内容 ↗</a>' : ' · <span style="color:#b25e00">未回填链接</span>')).join('<br>');
   const df = Object.keys(e.drafts||{}).slice(0,4).map(k=>{
     const d = e.drafts[k]||{};
     return '<details style="margin-top:4px"><summary style="cursor:pointer;font-weight:600">'+esc(d.title||k)+'</summary>'+
@@ -3814,6 +3858,7 @@ function adminEmpCard(e){
       '<span class="tag cat-conv">客资 '+e.cx+'</span>'+
     '</div>'+
     '<div class="adm-detail">'+
+      (e.orphan? '<div class="ln" style="color:#b25e00"><b>名字对不上（旧版数据）：</b>让他用名单里的昵称重新登录一次员工版，这条会自动合并到他的名字下。</div>':'')+
       '<div class="ln"><b>人设：</b>'+per+'</div>'+
       (tp? '<div style="margin-top:4px"><b>最近选题：</b><br>'+tp+'</div>':'')+
       (df? '<div style="margin-top:6px"><b>草稿内容（点开看正文）：</b>'+df+'</div>':'')+
@@ -3870,6 +3915,7 @@ function renderAdminPanel(){
         '<button class="link-btn hot" id="admSyncBtn">🔗 生成员工同步码</button>'+
         '<button class="link-btn hot" id="admImportBtn">📥 导入员工汇总码</button>'+
         '<button class="link-btn" id="admRefreshBtn">🔄 刷新员工数据</button>'+
+        '<button class="link-btn" id="admDiagBtn">🔍 同步诊断</button>'+
         '<a class="link-btn" href="'+FEISHU.dailyTable+'" target="_blank" rel="noopener">🗂 飞书备份表（可选）</a>'+
         '<button class="btn sm" id="admBackupBtn">备份 / 恢复（换电脑也能带走）</button>'+
       '</div>'+
@@ -3889,7 +3935,43 @@ function renderAdminPanel(){
   $('#admSyncBtn').onclick = openSyncCode;
   $('#admImportBtn').onclick = openImportEmpCode;
   $('#admRefreshBtn').onclick = ()=> renderAdminPanel();
+  const dg = $('#admDiagBtn'); if(dg) dg.onclick = openSyncDiag;
   bindRosterCard();
+}
+/* 同步诊断：把「本机到底收到了什么」原样列出来，用于排查
+   「员工填了但主管看不到」「名字显示成一串代号」这类问题 */
+function openSyncDiag(){
+  const rows = [];
+  let roster = [];
+  try{ roster = lsGet('dse_admin_roster_cache', []) || []; }catch(e){}
+  const sess = (window.__cloud && __cloud.session && __cloud.session()) || null;
+  rows.push('<div class="ln"><b>登录身份：</b>'+(sess?(esc(sess.role||'')+' · '+(sess.role==='admin'?'主管':'员工')+' · ns='+esc(sess.ns||'')+' · 昵称='+esc(sess.name||'（空）')):'（没登录 / 单机版）')+'</div>');
+  let n = 0;
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    const m = k && k.match(/^dse_wb_(u_[a-z0-9]+)_who_v2$/);
+    if(!m) continue;
+    n++;
+    const ns = m[1];
+    const g = (suf,d)=> lsGet('dse_wb_'+ns+'_'+suf+'_v2', d);
+    const who = g('who','');
+    const accts = g('acct', []) || [];
+    const daily = g('daily', []) || [];
+    const a0 = accts[0] || {};
+    rows.push('<div class="ln" style="margin-top:8px;padding:8px;border:1px solid #eee;border-radius:8px;line-height:1.9">'+
+      '<b>命名空间：</b>'+esc(ns)+'<br>'+
+      '<b>who（昵称）：</b>'+(who?'「'+esc(who)+'」':'<span style="color:#b25e00">空（所以显示成一串代号）</span>')+'<br>'+
+      '<b>账号：</b>'+accts.length+' 个'+(a0.name?'，第一个：'+esc(a0.name)+(a0.link?'（'+esc(a0.link)+'）':'（没填主页链接）'):'')+'<br>'+
+      '<b>上报：</b>'+daily.length+' 篇'+(daily[0]?('，最近：'+esc(daily[0].date||'')+' 浏览'+(daily[0].views||0)):'')+'<br>'+
+      '<b>名单里对应的昵称：</b>'+(roster.find(r=>r.ns===ns)?esc((roster.find(r=>r.ns===ns).name||'')):'<span style="color:#b25e00">名单里没有这个 ns</span>')+
+      '</div>');
+  }
+  rows.push('<div class="ln" style="margin-top:10px"><b>名单（'+(roster.length||0)+' 人）：</b>'+
+    (roster.length?roster.map(r=>esc(r.name||'')+'（ns='+esc(r.ns||'')+'）').join('、'):'空')+'</div>');
+  if(!n) rows.push('<div class="ln" style="margin-top:10px;color:#b25e00">本机还没有任何员工数据。先确认：员工是用你名单里的昵称在本网址登录的（不是自己随便起的）。</div>');
+  showModal('同步诊断（截图给技术人员看）',
+    '<div style="font-size:12px;line-height:1.8;max-height:60vh;overflow:auto">'+rows.join('')+'</div>',
+    [{t:'关闭', fn:closeModal}]);
 }
 function collectLocalDump(){
   const dump={};

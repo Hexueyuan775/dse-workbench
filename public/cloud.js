@@ -16,6 +16,55 @@
   try { sess = JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch (e) { sess = null; }
   if (sess && !sess.token) sess = null;
 
+  /* 和页面 / 服务端完全一致的昵称哈希（命名空间 u_xxxx） */
+  function hashStr(s) {
+    var h = 2166136261; s = String(s || '');
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0);
+  }
+  function canonNs(name) { return 'u_' + hashStr(name).toString(36); }
+  function whoOf(raw) {
+    var v = raw; try { var p = JSON.parse(raw); if (typeof p === 'string') v = p; } catch (e) {}
+    return String(v == null ? '' : v).trim();
+  }
+
+  /* 旧版本命名空间搬迁：老版页面用的哈希不一样，浏览器里留下的键
+     形如 dse_wb_u_1jxyfnsz2_xxx_v2。这里按 who（昵称）把它们统一
+     搬到当前哈希算出来的 ns 下，避免「名字显示成一串代号 / 数据对不上」。 */
+  function compactLocal() {
+    var keys = [], i;
+    for (i = 0; i < localStorage.length; i++) { var k0 = localStorage.key(i); if (k0) keys.push(k0); }
+    var moved = 0;
+    keys.forEach(function (k) {
+      var m = k.match(/^dse_wb_(u_[a-z0-9]+)_who_v2$/);
+      if (!m) return;
+      var ns = m[1], who = whoOf(localStorage.getItem(k));
+      if (!who) return;
+      var canon = canonNs(who);
+      if (canon === ns) return;
+      var pre = 'dse_wb_' + ns + '_', cpre = 'dse_wb_' + canon + '_';
+      var src = [];
+      for (var j = 0; j < localStorage.length; j++) {
+        var kk = localStorage.key(j);
+        if (kk && kk.indexOf(pre) === 0) src.push(kk);
+      }
+      src.forEach(function (kk) {
+        var nk = cpre + kk.slice(pre.length), v = localStorage.getItem(kk);
+        if (v !== null && localStorage.getItem(nk) === null) { localStorage.setItem(nk, v); moved++; }
+        localStorage.removeItem(kk); moved++;
+      });
+    });
+    return moved;
+  }
+
+  /* 老会话也一起作废：token 里带的还是旧 ns，不重新登录就永远对不上数据 */
+  var staleSession = false;
+  if (sess && sess.role === 'emp' && sess.name && String(sess.ns || '') !== canonNs(sess.name)) {
+    staleSession = true;
+    try { localStorage.removeItem(SKEY); } catch (e) {}
+    sess = null;
+  }
+
   var pushTimer = null;
   var dirty = {};
   var pulling = false;
@@ -78,10 +127,10 @@
           Object.keys(o.kv || {}).forEach(function (k) { kv[k] = o.kv[k]; });
         });
         lastRev = d.rev || lastRev;
-        return applyKv(kv);
+        return applyKv(kv) + compactLocal();
       }
       lastRev = d.rev || lastRev;
-      return applyKv(d.kv || {});
+      return applyKv(d.kv || {}) + compactLocal();
     }).catch(function () { pulling = false; return 0; });
   }
 
@@ -125,7 +174,9 @@
 
   function start(fn) {
     if (fn) onRemote = fn;
-    if (!online || !sess || started) return;
+    if (!online) return;
+    try { compactLocal(); } catch (e) {}
+    if (!sess || started) return;
     started = true;
     setInterval(tick, 6000);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
@@ -199,6 +250,10 @@
     saveRoster: saveRoster,
     changeAdminPass: changeAdminPass,
     pushNs: pushNs,
+    compact: compactLocal,
     rev: function () { return lastRev; }
   };
+
+  /* 旧会话（旧版命名空间）已作废：回登录页用名单里的昵称重新登录一次 */
+  if (staleSession && online) location.replace('index.html');
 })();

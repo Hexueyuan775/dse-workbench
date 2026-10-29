@@ -244,6 +244,14 @@ const FEISHU = {
 };
 
 function hashStr(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0); }
+/* 链接修正：只粘贴 www.xiaohongshu.com/... 时自动补 https://，不然主管点开会 404 */
+function normLink(u){
+  let s = String(u==null?'':u).trim().replace(/^[<（(「\s]+/,'').replace(/[>）)」\s]+$/,'');
+  if(!s) return '';
+  if(/^\/\//.test(s)) return 'https:'+s;
+  if(!/^[a-zA-Z][a-zA-Z0-9+.\-]*:\/\//.test(s)) s = 'https://' + s.replace(/^\/+/, '');
+  return s;
+}
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function parseDt(s){ if(!s) return null; const d=new Date(String(s).replace(/\//g,'-')+'T00:00:00'); return isNaN(d.getTime())?null:d; }
 function fmtTs(ts){ if(!ts) return '—'; const d=new Date(ts); const p=n=>String(n).padStart(2,'0');
@@ -487,7 +495,7 @@ function openAcctForm(id){
 function saveAcct(id){
   const name = ($('#aName').value||'').trim();
   if(!name){ toast('请填账号名'); return; }
-  const obj = {id:id||uid(), name, link:($('#aLink')?($('#aLink').value||'').trim():''), persona:($('#aPersona')?$('#aPersona').value:''), layer:$('#aAud').value, audience:$('#aAud').value,
+  const obj = {id:id||uid(), name, link:normLink($('#aLink')?($('#aLink').value||''):''), persona:($('#aPersona')?$('#aPersona').value:''), layer:$('#aAud').value, audience:$('#aAud').value,
     year:($('#aYear').value||'').trim(), tone:($('#aTone').value||'').trim(),
     subjects:($('#aSubj').value||'').trim(), catch:($('#aCatch').value||'').trim(), extra:($('#aExtra').value||'').trim()};
   if(id){ const i = state.accounts.findIndex(x=>x.id===id); if(i>=0) state.accounts[i]=obj; }
@@ -767,7 +775,7 @@ function submitPost(){
   const t = state.activeTopic; if(!t) return;
   const title = ($('#pTitle').value||'').trim();
   if(!title){ toast('标题不能为空'); return; }
-  const link = ($('#pLink') ? ($('#pLink').value||'').trim() : '');
+  const link = normLink($('#pLink') ? ($('#pLink').value||'') : '');
   const body = $('#pBody').value, tags = $('#pTags').value;
   const a = accById(t.acctId) || activeAcct() || {};
   state.daily.unshift({id:uid(), title, body, link, date:todayStr(),
@@ -798,7 +806,7 @@ function renderDaily(){
   const sum = k => d.reduce((a,x)=>a+(+x[k]||0),0);
   const me = activeAcct();
   const acctLine = me
-    ? '<b>'+esc(me.name)+'</b>'+(me.link?' · <a href="'+esc(me.link)+'" target="_blank" rel="noopener">账号主页 ↗</a>':' · <span style="color:#d81e3f">还没填账号主页链接，去「我的选题 → 登记账号」补上</span>')
+    ? '<b>'+esc(me.name)+'</b>'+(me.link?' · <a href="'+esc(normLink(me.link))+'" target="_blank" rel="noopener">账号主页 ↗</a>':' · <span style="color:#d81e3f">还没填账号主页链接，去「我的选题 → 登记账号」补上</span>')
     : '<span style="color:#d81e3f">还没有账号：先去「我的选题」点「登记账号」，昵称 + 主页链接填一次就固定</span>';
   const draftKeys = Object.keys(state.drafts||{});
   const draftOpts = '<option value="">（手动填 / 或从草稿带出）</option>'+draftKeys.map(k=>'<option value="'+esc(k)+'">'+esc(k.slice(0,28))+'</option>').join('');
@@ -877,7 +885,7 @@ function addDaily(){
   const acctName = ($('#dAcct')?($('#dAcct').value||'').trim():'') || SESSION.name;
   const me = (state.accounts||[]).find(a=>a.name===acctName) || activeAcct() || null;
   state.daily.unshift({id:uid(), title, body:($('#dBody')?$('#dBody').value:''),
-    link:($('#dLink').value||'').trim(), date:$('#dDate').value||todayStr(),
+    link:normLink($('#dLink').value||''), date:$('#dDate').value||todayStr(),
     views:+($('#dViews')?$('#dViews').value:0)||0,
     imp:0, like:+$('#dLike').value||0, cmt:+$('#dCmt').value||0,
     cx, note:($('#dNote')?($('#dNote').value||'').trim():''),

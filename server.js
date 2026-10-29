@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const os = require('os');
 
 const PORT = Number(process.env.PORT || 3000);
+const BUILD = 'v5-2026-10-29';
 const ROOT = __dirname;
 const PUB = path.join(ROOT, 'public');
 const DATA_DIR = process.env.DSE_DATA_DIR || path.join(ROOT, 'data');
@@ -124,6 +125,43 @@ function saveDB(){
   saveTimer = setTimeout(() => { saveTimer = null; persist(); }, 250);
 }
 
+/* 旧版本命名空间合并：老版页面用的哈希和现在不一样，服务器里可能留着
+   u_1jxyfnsz2 这类旧 ns（里面 who 已经写了昵称）。这里按 who 把它们
+   统一搬到当前 ns，避免主管端看到「一串代号」的员工。
+   idempotent：搬完就删旧 ns，重复跑也不会有副作用。 */
+let lastCompact = 0;
+function compactNs(force){
+  const now = Date.now();
+  if (!force && now - lastCompact < 30000) return;
+  lastCompact = now;
+  let changed = false;
+  Object.keys(db.ns).forEach(ns => {
+    const rec = db.ns[ns];
+    if (!rec || !rec.kv) return;
+    const raw = rec.kv['dse_wb_' + ns + '_who_v2'];
+    if (!raw) return;
+    let who = raw;
+    try { const p = JSON.parse(raw); if (typeof p === 'string') who = p; } catch (e) {}
+    who = String(who || '').trim();
+    if (!who) return;
+    const canon = empNs(who);
+    if (canon === ns) return;
+    const pre = 'dse_wb_' + ns + '_';
+    const tgt = db.ns[canon] || (db.ns[canon] = { rev: 0, kv: {} });
+    tgt.kv = tgt.kv || {};
+    Object.keys(rec.kv).forEach(k => {
+      if (k.indexOf(pre) !== 0) return;
+      const nk = 'dse_wb_' + canon + '_' + k.slice(pre.length);
+      if (!(nk in tgt.kv)) tgt.kv[nk] = rec.kv[k];
+    });
+    tgt.rev = (tgt.rev || 0) + 1;
+    tgt.at = Date.now();
+    delete db.ns[ns];
+    changed = true;
+  });
+  if (changed){ db.rev++; saveDB(); }
+}
+
 /* ---------------- 令牌（无状态签名） ---------------- */
 function sign(payload){
   const b = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -173,7 +211,7 @@ function publicRoster(){
 /* ---------------- API ---------------- */
 async function handleApi(req, res, u, p){
   if (p === '/api/ping'){
-    return send(res, 200, { ok: true, app: 'dse-workbench', employees: db.roster.length, rev: db.rev, storage: useKV ? 'kv' : 'file' });
+    return send(res, 200, { ok: true, app: 'dse-workbench', build: BUILD, employees: db.roster.length, rev: db.rev, storage: useKV ? 'kv' : 'file' });
   }
 
   /* 登录：主管用口令，员工用名单里的昵称 */
@@ -189,10 +227,18 @@ async function handleApi(req, res, u, p){
     if (!it) return send(res, 403, { ok: false, error: '昵称「' + nm + '」不在主管录入的名单里，请联系主管添加后再登录' });
     if (it.active === false) return send(res, 403, { ok: false, error: '这个账号已被主管停用' });
     if (it.pass && String(b.pass || '') !== String(it.pass)) return send(res, 401, { ok: false, error: '密码不对' });
+    /* 自愈：员工登录时，服务端亲手把这个命名空间的 who 写成他的昵称。
+       这样即使员工浏览器里缓存的旧 cloud.js 没有推 who，
+       主管端也不会再看到「u_xxxxx 一串代号」。 */
+    const ns = empNs(nm);
+    if (!db.ns[ns]) db.ns[ns] = { rev: 0, kv: {} };
+    const whoKey = 'dse_wb_' + ns + '_who_v2';
+    const whoVal = JSON.stringify(nm);
+    if (db.ns[ns].kv[whoKey] !== whoVal){ db.ns[ns].kv[whoKey] = whoVal; db.rev++; saveDB(); }
     return send(res, 200, {
       ok: true,
-      token: sign({ r: 'emp', ns: empNs(nm), n: nm, t: Date.now() }),
-      role: 'emp', ns: empNs(nm), name: nm, persona: it.persona || ''
+      token: sign({ r: 'emp', ns: ns, n: nm, t: Date.now() }),
+      role: 'emp', ns: ns, name: nm, persona: it.persona || ''
     });
   }
 
@@ -233,6 +279,7 @@ async function handleApi(req, res, u, p){
   /* 主管：拉全团队数据（含员工名单） */
   if (p === '/api/all' && req.method === 'GET'){
     if (me.r !== 'admin') return send(res, 403, { ok: false, error: '只有主管可以拉全员数据' });
+    compactNs();
     const since = Number(u.searchParams.get('since') || -1);
     if (since === db.rev) return send(res, 200, { ok: true, rev: db.rev, unchanged: true });
     return send(res, 200, { ok: true, rev: db.rev, ns: db.ns, roster: publicRoster(), adminName: db.admin.name });
@@ -377,5 +424,6 @@ function startServer(){
       console.error('[KV] 请检查 Render 里的 UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN 是否填对');
     }
   }
+  try { compactNs(true); } catch (e) { console.error('[NS] 旧命名空间合并失败：' + e.message); }
   startServer();
 })();
