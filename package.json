@@ -1,0 +1,14 @@
+{
+  "name": "dse-content-workbench",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DSE 内容工作台 · 网站版（员工/主管同一网址，昵称登录，数据实时同步）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "node build.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSE 内容工作台 · 登录</title>
+<script src="cloud.js"></script>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --line:#ececf0; --txt:#1c1d22; --txt-2:#5b5f6b; --txt-3:#9a9ea9;
+    --accent:#ff2e4d; --accent-soft:#fff0f3; --green:#12b76a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(1200px 600px at 20% 0%, #ffe9ee 0%, rgba(255,233,238,0) 60%), var(--bg);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;color:var(--txt);
+  }
+  .wrap{width:100%;max-width:430px}
+  .brand{display:flex;align-items:center;gap:9px;margin-bottom:16px;justify-content:center}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--accent)}
+  .brand h1{font-size:17px;margin:0;letter-spacing:.3px}
+  .brand span{font-size:12px;color:var(--txt-3);margin-left:2px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 10px 30px rgba(20,20,40,.06)}
+  .roles{display:flex;gap:8px;background:#f2f3f6;padding:4px;border-radius:12px;margin-bottom:18px}
+  .roles button{
+    flex:1;border:0;background:transparent;padding:9px 0;border-radius:9px;font-size:13.5px;font-weight:600;
+    color:var(--txt-2);cursor:pointer;font-family:inherit;transition:.15s
+  }
+  .roles button.on{background:#fff;color:var(--txt);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  label{display:block;font-size:12px;color:var(--txt-2);margin:0 0 6px;font-weight:600}
+  input{
+    width:100%;height:42px;border:1px solid var(--line);background:#fbfbfd;border-radius:10px;padding:0 12px;
+    font-size:14px;font-family:inherit;color:var(--txt);outline:none
+  }
+  input:focus{border-color:#ffb3c0;background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
+  .field{margin-bottom:13px}
+  .submit{
+    width:100%;height:44px;border:0;border-radius:11px;background:var(--accent);color:#fff;font-size:14.5px;font-weight:700;
+    cursor:pointer;font-family:inherit;margin-top:4px;box-shadow:0 6px 16px rgba(255,46,77,.22)
+  }
+  .submit:disabled{opacity:.6;cursor:default}
+  .err{min-height:18px;font-size:12.5px;color:var(--accent);margin-top:10px;line-height:1.5}
+  .tip{font-size:12px;color:var(--txt-3);line-height:1.75;margin-top:14px}
+  .tip b{color:var(--txt-2)}
+  .who{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fbfbfd;border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin-bottom:16px}
+  .who .l{font-size:13px}
+  .who .l i{font-style:normal;font-size:11px;padding:2px 7px;border-radius:20px;background:var(--accent-soft);color:var(--accent);margin-left:6px;font-weight:700}
+  .who button{border:0;background:transparent;color:var(--txt-3);font-size:12px;cursor:pointer;font-family:inherit;text-decoration:underline}
+  .hide{display:none!important}
+  .foot{text-align:center;font-size:11.5px;color:#b3b6bf;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><span class="dot"></span><h1>DSE 内容工作台</h1><span>· 团队版</span></div>
+
+  <div class="card">
+    <div id="sessBox" class="who hide">
+      <div class="l"><span id="sessName"></span><i id="sessRole"></i></div>
+      <button id="btnOut">退出</button>
+    </div>
+
+    <div id="loginBox">
+      <div class="roles">
+        <button data-role="emp" class="on">我是员工</button>
+        <button data-role="admin">我是主管</button>
+      </div>
+
+      <div id="empForm">
+        <div class="field">
+          <label>你的昵称（主管录入过的那个）</label>
+          <input id="empName" maxlength="24" autocomplete="off" placeholder="例如：小林、A号、阿May">
+        </div>
+        <div class="field">
+          <label>密码（主管没设置就留空）</label>
+          <input id="empPass" type="password" maxlength="24" autocomplete="off" placeholder="可选">
+        </div>
+        <button class="submit" id="btnEmp">进入我的工作台 →</button>
+        <div class="err" id="errEmp"></div>
+        <div class="tip">昵称必须<b>先由主管在后台录入</b>才能登录；不在名单里会提示「不在名单中」。<br>登录后你只能看到自己的人设、选题、笔记、客资。</div>
+      </div>
+
+      <div id="admForm" class="hide">
+        <div class="field">
+          <label>主管口令</label>
+          <input id="admPass" type="password" maxlength="32" autocomplete="off" placeholder="默认 dse2026，登录后请立刻修改">
+        </div>
+        <button class="submit" id="btnAdm" style="background:#1c1d22;box-shadow:none">进入主管后台 →</button>
+        <div class="err" id="errAdm"></div>
+        <div class="tip">主管可以看到<b>全员</b>的选题、笔记、客资和复盘，还能在「后台」里增删员工昵称、设置人设方向（摘星 / 遵理）。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">同一个网址 · 员工和主管共用 · 数据实时同步</div>
+</div>
+
+<script>
+(function(){
+  var role = 'emp';
+  var $ = function(s){ return document.querySelector(s); };
+  var C = window.__cloud;
+
+  function setRole(r){
+    role = r;
+    document.querySelectorAll('.roles button').forEach(function(b){ b.classList.toggle('on', b.dataset.role === r); });
+    $('#empForm').classList.toggle('hide', r !== 'emp');
+    $('#admForm').classList.toggle('hide', r !== 'admin');
+  }
+  document.querySelectorAll('.roles button').forEach(function(b){
+    b.onclick = function(){ setRole(b.dataset.role); };
+  });
+
+  var s = C && C.session();
+  if (s){
+    $('#loginBox').classList.add('hide');
+    $('#sessBox').classList.remove('hide');
+    $('#sessName').textContent = s.name;
+    $('#sessRole').textContent = s.role === 'admin' ? '主管' : '员工';
+    $('#btnOut').onclick = function(){ C.logout(); };
+    $('#sessBox').insertAdjacentHTML('afterend',
+      '<button class="submit" id="btnGo" style="margin-bottom:0">继续进入 →</button>');
+    $('#btnGo').onclick = function(){
+      location.href = s.role === 'admin' ? 'admin.html' : 'staff.html';
+    };
+  }
+
+  function busy(btn, on, txt){
+    btn.disabled = !!on;
+    if (txt) btn.textContent = txt;
+  }
+
+  $('#btnEmp').onclick = function(){
+    var name = ($('#empName').value || '').trim();
+    var pass = ($('#empPass').value || '').trim();
+    $('#errEmp').textContent = '';
+    if (!name){ $('#errEmp').textContent = '请先填写主管给你的昵称'; return; }
+    busy(this, true, '登录中…');
+    C.login('emp', name, pass).then(function(d){
+      location.href = 'staff.html';
+    }).catch(function(e){
+      $('#errEmp').textContent = e.message || '登录失败';
+      busy($('#btnEmp'), false, '进入我的工作台 →');
+    });
+  };
+
+  $('#btnAdm').onclick = function(){
+    var pass = ($('#admPass').value || '').trim();
+    $('#errAdm').textContent = '';
+    if (!pass){ $('#errAdm').textContent = '请输入主管口令'; return; }
+    busy(this, true, '登录中…');
+    C.login('admin', '主管', pass).then(function(){
+      location.href = 'admin.html';
+    }).catch(function(e){
+      $('#errAdm').textContent = e.message || '登录失败';
+      busy($('#btnAdm'), false, '进入主管后台 →');
+    });
+  };
+
+  $('#empName').onkeydown = function(e){ if (e.key === 'Enter') $('#btnEmp').click(); };
+  $('#empPass').onkeydown = function(e){ if (e.key === 'Enter') $('#btnEmp').click(); };
+  $('#admPass').onkeydown = function(e){ if (e.key === 'Enter') $('#btnAdm').click(); };
+
+  if (C && !C.online){
+    $('#errEmp').textContent = '提示：当前是本地文件模式，云同步不可用，请用服务器网址打开。';
+  }
+})();
+</script>
+</body>
+</html>
