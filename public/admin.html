@@ -4,245 +4,389 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="cloud.js?v=2"></script>
-<link rel="stylesheet" href="theme.css?v=7">
 <title>DSE 矩阵选题工作台</title>
 <style>
-  :root{
-    --bg:#f6f7f9; --panel:#fff; --line:#ececf0; --line-2:#e3e4ea;
-    --txt:#1c1d22; --txt-2:#5b5f6b; --txt-3:#9a9ea9;
-    --accent:#ff2e4d; --accent-soft:#fff0f3;
-    --green:#12b76a; --green-soft:#eafaf1;
-    --amber:#f79009; --amber-soft:#fff6e8;
-    --blue:#3b82f6; --blue-soft:#eef4ff;
-    --purple:#8b5cf6; --purple-soft:#f3efff;
-    --radius:14px; --radius-sm:10px;
-    --shadow:0 1px 2px rgba(20,20,30,.04), 0 4px 16px rgba(20,20,30,.05);
-  }
-  *{box-sizing:border-box;}
-  html,body{height:100%;}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    background:var(--bg);color:var(--txt);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
-  button{font-family:inherit;cursor:pointer;}
-  input,textarea,select{font-family:inherit;font-size:13.5px;color:var(--txt);}
-  ::-webkit-scrollbar{width:8px;height:8px;}
-  ::-webkit-scrollbar-thumb{background:#d8dae0;border-radius:8px;}
-  ::-webkit-scrollbar-track{background:transparent;}
+/* ================= DSE 主管工作台 · 任务看板主题 ================= */
+:root{
+  --bg:#F4F6F2; --panel:#FFFFFF;
+  --line:#E7EAE2; --line-2:#DCE2D7;
+  --txt:#1B241E; --txt-2:#58665C; --txt-3:#8C998F;
+  --accent:#2F7A57; --accent-soft:#EAF3EC; --accent-deep:#22513B;
+  --green:#2F7A57; --green-soft:#EAF3EC;
+  --amber:#A9760C; --amber-soft:#FBF2DE;
+  --blue:#3C6E9E; --blue-soft:#EAF1F8;
+  --purple:#6C5C96; --purple-soft:#F1EEF8;
+  --red:#BE4B42; --red-soft:#FBEBE9;
+  --radius:16px; --radius-sm:12px;
+  --shadow:0 1px 2px rgba(27,36,30,.04), 0 8px 24px rgba(27,36,30,.05);
+  --pri:var(--accent);
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{margin:0;background:var(--bg);color:var(--txt);font-size:15px;line-height:1.62;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;}
+button{font-family:inherit;cursor:pointer;}
+input,textarea,select{font-family:inherit;font-size:14px;color:var(--txt);}
+a{color:var(--accent);text-decoration:none;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:#D6DCD1;border-radius:9px;border:2px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-track{background:transparent;}
 
-  /* layout */
-  .app{height:100vh;display:flex;flex-direction:column;overflow:hidden;}
-  .topbar{height:58px;flex:0 0 58px;display:flex;align-items:center;gap:14px;padding:0 20px;background:var(--panel);border-bottom:1px solid var(--line);}
-  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15.5px;letter-spacing:.2px;}
-  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);}
-  .brand small{font-weight:500;color:var(--txt-3);font-size:12px;margin-left:2px;}
-  .top-meta{margin-left:auto;display:flex;align-items:center;gap:16px;color:var(--txt-2);font-size:12.5px;flex-wrap:wrap;}
-  .top-meta b{color:var(--txt);font-weight:600;}
+/* ---------------- 外壳：左导航 + 主区 ---------------- */
+.app{height:100vh;display:grid;grid-template-columns:266px minmax(0,1fr);overflow:hidden;}
+.sidebar{background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;
+  padding:16px 12px 12px;min-height:0;}
+.ws{display:flex;align-items:center;gap:10px;padding:4px 6px 12px;}
+.ws-logo{width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:var(--accent-soft);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;}
+.ws .ws-txt{min-width:0;}
+.ws b{display:block;font-size:15px;font-weight:750;letter-spacing:.2px;}
+.ws span{display:block;font-size:12px;color:var(--txt-3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nav{display:flex;flex-direction:column;gap:2px;overflow-y:auto;min-height:0;}
+.nav-sep{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--txt-3);
+  letter-spacing:.6px;margin:14px 8px 6px;}
+.nav-sep .nav-cnt{margin-left:auto;font-weight:600;letter-spacing:0;}
+.nav-sep .btn-add{margin-left:6px;border:1px solid var(--line-2);background:#fff;color:var(--txt-2);
+  border-radius:8px;width:22px;height:22px;line-height:1;font-size:14px;padding:0;}
+.nav-sep .btn-add:hover{border-color:var(--accent);color:var(--accent);}
+.tab{display:flex;align-items:center;gap:10px;width:100%;border:none;background:transparent;text-align:left;
+  padding:9px 11px;border-radius:11px;font-size:14px;font-weight:600;color:var(--txt-2);position:relative;}
+.tab .ico{width:18px;text-align:center;flex:0 0 18px;display:inline-flex;align-items:center;justify-content:center;
+  color:currentColor;opacity:.75;}
+.tab .ico svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.tab.active .ico{opacity:1;}
+.tab:hover{background:#F3F6F1;color:var(--txt);}
+.tab.active{background:var(--accent-soft);color:var(--accent-deep);}
+.tab.active::after{display:none;}
+.tab .cnt{margin-left:auto;font-size:12px;color:var(--txt-3);background:#F2F5F0;border-radius:999px;
+  padding:0 8px;line-height:19px;font-weight:600;}
+.tab.active .cnt{background:#fff;color:var(--accent-deep);}
+.acct-list{flex:1 1 auto;overflow-y:auto;min-height:90px;padding-right:2px;margin-top:2px;}
+.layer-group{margin-bottom:10px;}
+.layer-title{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--txt-3);margin:6px 6px 5px;}
+.layer-title .cnt{color:var(--txt-3);font-weight:600;}
+.persona-list{display:flex;flex-direction:column;gap:6px;}
+.persona{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;
+  padding:8px 9px;background:#fff;cursor:pointer;transition:.15s;}
+.persona:hover{border-color:#CFD9CB;background:#FBFCFA;}
+.persona.active{border-color:#BFDCC8;background:var(--accent-soft);}
+.avatar{width:28px;height:28px;flex:0 0 28px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:#fff;background:#8A948C;}
+.avatar.a0{background:#C77B57;} .avatar.a1{background:#5B8A73;} .avatar.a2{background:#5B84A8;}
+.avatar.a3{background:#B3924B;} .avatar.a4{background:#8B7BA8;} .avatar.a5{background:#5C9A9A;}
+.persona .p-main{min-width:0;flex:1;}
+.persona .p-name{font-size:13.5px;font-weight:650;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.persona .p-tag{font-size:12px;color:var(--txt-3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.persona .p-del{margin-left:auto;flex:0 0 auto;width:20px;height:20px;padding:0;border:1px solid var(--line);
+  background:#fff;color:var(--txt-3);border-radius:7px;font-size:13px;line-height:1;opacity:0;transition:.15s;}
+.persona:hover .p-del{opacity:1;}
+.persona .p-del:hover{border-color:#E0A9A4;color:var(--red);background:var(--red-soft);}
+.side-foot{border-top:1px solid var(--line);padding-top:10px;margin-top:8px;display:flex;flex-direction:column;gap:8px;}
+.side-meta{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--txt-3);}
+.side-meta b{color:var(--txt-2);font-weight:650;}
 
-  .layout{flex:1;display:grid;grid-template-columns:238px minmax(0,1fr) 428px;gap:12px;padding:12px;overflow:hidden;}
-  .col{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;min-height:0;}
-  .col-head{padding:12px 14px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-  .col-head h2{margin:0;font-size:13px;font-weight:650;letter-spacing:.2px;}
-  .col-head .sub{color:var(--txt-3);font-size:11.5px;font-weight:400;}
-  .col-head .spacer{margin-left:auto;}
-  .col-body{flex:1;overflow-y:auto;padding:12px;min-height:0;}
+/* ---------------- 主区 ---------------- */
+.main{min-width:0;display:flex;flex-direction:column;overflow:hidden;}
+.page-head{padding:26px 30px 4px;display:flex;align-items:flex-start;gap:18px;flex:0 0 auto;}
+.ph-left{min-width:0;}
+.crumb{font-size:12px;font-weight:700;color:var(--txt-3);letter-spacing:.5px;}
+.page-head h1{margin:5px 0 7px;font-size:27px;font-weight:800;letter-spacing:-.4px;line-height:1.2;}
+.page-sub{margin:0;font-size:14px;color:var(--txt-2);}
+.ph-right{margin-left:auto;display:flex;align-items:center;gap:14px;flex:0 0 auto;padding-top:6px;}
+.ph-acct{font-size:13px;color:var(--txt-3);}
+.ph-acct b{color:var(--txt);font-weight:650;}
+.workspace{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);gap:18px;
+  padding:16px 30px 26px;overflow:hidden;}
+.workspace.with-editor{grid-template-columns:minmax(0,1fr) 460px;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+  display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+.panel.plain{background:transparent;border:none;box-shadow:none;border-radius:0;overflow:visible;}
+.panel-body{flex:1 1 auto;overflow-y:auto;min-height:0;}
+.edit-pane{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+  display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+.edit-pane[hidden]{display:none;}
+.pane-head{padding:14px 18px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.pane-title{font-size:15px;font-weight:750;}
+.pane-sub{font-size:13px;color:var(--txt-3);}
+.pane-head .spacer{margin-left:auto;}
+.pane-body{flex:1;overflow-y:auto;padding:16px 18px 22px;}
 
-  /* buttons */
-  .btn{border:1px solid var(--line-2);background:#fff;color:var(--txt);border-radius:9px;padding:6px 11px;font-size:12.5px;font-weight:550;transition:.15s;white-space:nowrap;}
-  .btn:hover{border-color:#cfd1d9;background:#fbfbfc;}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .btn.primary:hover{background:#ef2340;border-color:#ef2340;}
-  .btn.dark{background:var(--txt);border-color:var(--txt);color:#fff;}
-  .btn.ghost{border-color:transparent;background:transparent;color:var(--txt-2);}
-  .btn.ghost:hover{background:#f2f3f6;color:var(--txt);}
-  .btn.sm{padding:4px 8px;font-size:11.5px;}
-  .btn:disabled{opacity:.45;cursor:not-allowed;}
-  .btn.block{width:100%;display:flex;justify-content:center;}
+/* ---------------- 按钮 ---------------- */
+.btn{border:1px solid var(--line-2);background:#fff;color:var(--txt);border-radius:10px;padding:7px 12px;
+  font-size:13px;font-weight:600;transition:.15s;white-space:nowrap;}
+.btn:hover{border-color:#C9D3C4;background:#FAFBF8;}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn.primary:hover{background:var(--accent-deep);border-color:var(--accent-deep);}
+.btn.dark{background:#26332B;border-color:#26332B;color:#fff;}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--txt-2);}
+.btn.ghost:hover{background:#F1F4EF;color:var(--txt);}
+.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:9px;}
+.btn.lg{padding:10px 18px;font-size:14px;border-radius:11px;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+.btn.block{width:100%;display:flex;justify-content:center;}
+.mini{border:1px solid var(--line-2);background:#fff;border-radius:8px;padding:3px 8px;font-size:12px;
+  color:var(--txt-2);font-weight:600;}
+.mini:hover{border-color:#C9D3C4;color:var(--txt);}
+.link-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:#fff;border-radius:10px;
+  padding:8px 13px;font-size:13px;font-weight:600;color:var(--txt);text-decoration:none;transition:.15s;}
+.link-btn:hover{border-color:var(--accent);color:var(--accent);}
+.link-btn.hot{background:var(--accent);border-color:var(--accent);color:#fff;}
+.link-btn.hot:hover{background:var(--accent-deep);color:#fff;}
 
-  /* left rail */
-  .layer-group{margin-bottom:14px;}
-  .layer-title{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--txt-2);text-transform:uppercase;letter-spacing:.4px;margin:0 2px 7px;}
-  .layer-title .cnt{color:var(--txt-3);font-weight:500;}
-  .persona-list{display:flex;flex-direction:column;gap:7px;}
-  .persona{border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 10px;cursor:pointer;display:flex;gap:9px;align-items:flex-start;transition:.15s;background:#fff;}
-  .persona:hover{border-color:#d5d7de;background:#fcfcfd;}
-  .persona.active{border-color:var(--accent);background:var(--accent-soft);}
-  .avatar{width:30px;height:30px;flex:0 0 30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:650;color:#fff;background:#8a8f9c;}
-  .avatar.a0{background:#ff6b81;} .avatar.a1{background:#5b8def;} .avatar.a2{background:#12b76a;}
-  .avatar.a3{background:#f79009;} .avatar.a4{background:#8b5cf6;} .avatar.a5{background:#0ea5e9;}
-  .persona .p-main{min-width:0;flex:1;}
-  .persona .p-name{font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .persona .p-tag{font-size:11px;color:var(--txt-3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .persona .p-del{margin-left:auto;flex:0 0 auto;width:20px;height:20px;padding:0;line-height:17px;text-align:center;border:1px solid var(--line);background:#fff;color:var(--txt-3);border-radius:6px;font-size:14px;cursor:pointer;transition:.15s;}
-  .persona .p-del:hover{border-color:#e07070;color:#e07070;background:#fff5f5;}
-  .pill{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10.5px;font-weight:600;background:#eef0f4;color:var(--txt-2);}
-  .pill.student{background:var(--blue-soft);color:#2563eb;}
-  .pill.parent{background:var(--purple-soft);color:#7c3aed;}
-  .empty-tip{color:var(--txt-3);font-size:12.5px;text-align:center;padding:20px 8px;line-height:1.7;}
+/* ---------------- 筛选 / 胶囊 ---------------- */
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);}
+.filters-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);
+  border-radius:12px;padding:9px 12px;}
+.flabel{font-size:12px;font-weight:700;color:var(--txt-3);letter-spacing:.4px;}
+.spacer{margin-left:auto;}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;background:#F2F5F0;border-radius:999px;
+  padding:5px 12px;font-size:12.5px;font-weight:600;color:var(--txt-2);transition:.15s;}
+.chip:hover{border-color:#D5DFD2;color:var(--txt);}
+.chip.active{background:var(--accent-soft);border-color:#CBE2D1;color:var(--accent-deep);}
+.chip .av{width:18px;height:18px;border-radius:50%;background:#DDEAE1;color:#2F5C45;display:inline-flex;
+  align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+.chip .cnum{font-size:11.5px;color:var(--txt-3);font-weight:700;}
+.chip.active .cnum{color:var(--accent);}
+.chip.src-摘星.active{background:#FBEDE3;border-color:#F0D2BE;color:#8A4A1E;}
+.chip.src-遵理.active{background:var(--blue-soft);border-color:#CFDEEE;color:#2C5678;}
+.search{flex:1;min-width:140px;border:1px solid var(--line-2);border-radius:9px;padding:6px 11px;outline:none;
+  background:#FBFCFA;font-size:13px;}
+.search:focus{border-color:#A9C7B4;background:#fff;}
+select.sel{border:1px solid var(--line-2);border-radius:9px;padding:6px 9px;background:#FBFCFA;outline:none;font-size:13px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:7px;font-size:12px;font-weight:650;background:#F1F4EF;color:var(--txt-2);white-space:nowrap;}
+.tag.src-摘星{background:#FBEDE3;color:#8A4A1E;}
+.tag.src-遵理{background:var(--blue-soft);color:#2C5678;}
+.tag.cat{background:var(--accent-soft);color:var(--accent-deep);}
+.tag.cat-exp{background:var(--amber-soft);color:var(--amber);}
+.tag.cat-teach{background:var(--blue-soft);color:#2C5678;}
+.tag.cat-geo{background:#E9F3EC;color:#2E6B4A;}
+.tag.cat-conv{background:var(--purple-soft);color:var(--purple);}
+.tag.kw{background:#EEF2ED;color:#4A5A4E;}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:650;background:#EEF1EC;color:var(--txt-2);}
+.pill.student{background:var(--blue-soft);color:#2C5678;}
+.pill.parent{background:var(--purple-soft);color:var(--purple);}
 
-  /* tabs */
-  .tabs{display:flex;gap:2px;padding:9px 10px 0;flex-wrap:wrap;}
-  .tab{border:none;background:transparent;padding:7px 11px;border-radius:9px 9px 0 0;font-size:12.5px;font-weight:600;color:var(--txt-3);position:relative;}
-  .tab.active{color:var(--txt);}
-  .tab.active::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;background:var(--accent);border-radius:2px;}
-  .tab .cnt{font-size:10.5px;color:var(--txt-3);font-weight:500;margin-left:3px;}
+/* ---------------- 任务看板 ---------------- */
+.board-wrap{padding:2px 0 10px;}
+.board{display:grid;grid-template-columns:repeat(4,minmax(190px,1fr));gap:20px;align-items:start;}
+.board-col{display:flex;flex-direction:column;gap:11px;min-width:0;}
+.bc-head{display:flex;align-items:center;gap:8px;padding:2px 6px 4px;}
+.bc-head h3{margin:0;font-size:14.5px;font-weight:750;color:var(--txt);}
+.bc-cnt{margin-left:auto;font-size:12px;font-weight:700;color:var(--txt-3);background:#EAEEE6;
+  border-radius:999px;padding:0 8px;line-height:19px;}
+.bc-empty{padding:26px 8px;text-align:center;font-size:13px;color:var(--txt-3);}
+.task-card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:14px 15px;
+  display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:.15s;
+  box-shadow:0 1px 2px rgba(27,36,30,.03);}
+.task-card:hover{border-color:#C9D8C7;box-shadow:0 6px 18px rgba(27,36,30,.07);transform:translateY(-1px);}
+.tc-top{display:flex;align-items:center;gap:8px;}
+.tc-state{font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;
+  background:var(--accent-soft);color:var(--accent-deep);}
+.tc-state.s-todo{background:#EEF1EC;color:#6F7C72;}
+.tc-state.s-doing{background:var(--amber-soft);color:var(--amber);}
+.tc-state.s-done{background:var(--accent-soft);color:var(--accent-deep);}
+.tc-state.s-blocked{background:var(--red-soft);color:var(--red);}
+.tc-acts{margin-left:auto;display:flex;gap:6px;}
+.tc-title{font-size:15px;font-weight:650;line-height:1.45;color:var(--txt);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.tc-desc{font-size:13px;color:var(--txt-2);line-height:1.6;}
+.tc-bar{height:4px;border-radius:4px;background:#EDF1E9;overflow:hidden;}
+.tc-bar i{display:block;height:100%;border-radius:4px;background:var(--accent);transition:width .3s;}
+.tc-bar.a i{background:var(--amber);} .tc-bar.r i{background:var(--red);} .tc-bar.g i{background:#B9C6B6;}
+.tc-pct{font-size:12px;color:var(--txt-3);font-weight:650;}
+.tc-foot{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--txt-3);
+  border-top:1px dashed var(--line);padding-top:9px;}
+.tc-foot .av{width:19px;height:19px;border-radius:50%;background:#E3EDE4;color:#2F5C45;display:inline-flex;
+  align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+.tc-foot b{color:var(--txt-2);font-weight:650;}
+.archive{margin-top:28px;}
+.archive-hd{display:flex;align-items:center;gap:10px;}
+.archive-hd h3{margin:0;font-size:15px;font-weight:750;}
+.archive-hd .cnt{font-size:12px;font-weight:700;color:var(--txt-3);background:#EAEEE6;border-radius:999px;
+  padding:0 9px;line-height:20px;}
+.archive-sub{margin:5px 0 12px;font-size:12.5px;color:var(--txt-3);}
+.archive-box{border:1px dashed var(--line-2);border-radius:13px;padding:26px;text-align:center;
+  font-size:13px;color:var(--txt-3);background:rgba(255,255,255,.7);}
+.arc-list{background:#fff;border:1px solid var(--line);border-radius:13px;overflow:hidden;}
+.arc-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;}
+.arc-row:last-child{border-bottom:none;}
+.arc-date{font-size:12px;color:var(--txt-3);font-variant-numeric:tabular-nums;flex:0 0 92px;}
+.arc-row b{font-weight:650;flex:0 0 auto;}
+.arc-row .arc-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt-2);}
+.arc-num{color:var(--txt-2);font-variant-numeric:tabular-nums;font-size:12.5px;}
 
-  /* filters */
-  .filters{display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);}
-  .chip{border:1px solid var(--line-2);background:#fff;border-radius:20px;padding:4px 10px;font-size:11.5px;color:var(--txt-2);font-weight:550;transition:.15s;}
-  .chip:hover{border-color:#cfd1d9;}
-  .chip.active{background:var(--txt);border-color:var(--txt);color:#fff;}
-  .chip.src-摘星.active{background:#ff8a3d;border-color:#ff8a3d;}
-  .chip.src-遵理.active{background:var(--blue);border-color:var(--blue);}
-  .search{flex:1;min-width:120px;border:1px solid var(--line-2);border-radius:9px;padding:5px 10px;outline:none;background:#fbfbfc;}
-  .search:focus{border-color:#c9ccd6;background:#fff;}
-  select.sel{border:1px solid var(--line-2);border-radius:9px;padding:5px 8px;background:#fbfbfc;outline:none;}
+/* ---------------- 选题与写帖 ---------------- */
+.topic-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 14px;}
+.topic-toolbar .tb-acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.topic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;}
+.topic-card{border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:#fff;
+  cursor:pointer;transition:.15s;}
+.topic-card:hover{border-color:#C9D8C7;background:#FCFDFB;box-shadow:0 4px 14px rgba(27,36,30,.05);}
+.topic-card.active{border-color:#A9C7B4;background:var(--accent-soft);box-shadow:0 0 0 3px rgba(47,122,87,.07);}
+.topic-head{display:flex;gap:8px;align-items:flex-start;}
+.topic-idx{font-size:11.5px;font-weight:800;color:var(--txt-3);font-variant-numeric:tabular-nums;padding-top:2px;}
+.topic-title{font-size:14px;font-weight:650;flex:1;min-width:0;line-height:1.5;}
+.topic-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.topic-why{margin-top:8px;font-size:12px;color:var(--txt-3);}
 
-  /* pool list */
-  .pool-item{border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 11px;margin-bottom:7px;transition:.15s;background:#fff;}
-  .pool-item:hover{border-color:#d9dbe2;background:#fcfcfd;}
-  .pool-top{display:flex;gap:8px;align-items:flex-start;}
-  .pool-title{font-size:12.8px;font-weight:600;flex:1;min-width:0;}
-  .pool-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;color:var(--txt-3);font-size:11px;}
-  .tag{display:inline-block;padding:1px 7px;border-radius:6px;font-size:10.5px;font-weight:600;background:#f1f2f5;color:var(--txt-2);}
-  .tag.src-摘星{background:#fff2e8;color:#c2410c;}
-  .tag.src-遵理{background:var(--blue-soft);color:#2563eb;}
-  .tag.cat{background:var(--accent-soft);color:#d81e3f;}
-  .tag.cat-exp{background:var(--amber-soft);color:#b45309;}
-  .tag.cat-teach{background:var(--blue-soft);color:#2563eb;}
-  .tag.cat-geo{background:var(--green-soft);color:#047857;}
-  .tag.cat-conv{background:var(--purple-soft);color:#7c3aed;}
-  .tag.kw{background:#f1f2f5;color:#475569;}
-  .pool-item a{color:var(--blue);text-decoration:none;font-size:11px;}
-  .pool-item a:hover{text-decoration:underline;}
+/* ---------------- 素材池 / 列表 ---------------- */
+.pool-item{border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;background:#fff;transition:.15s;}
+.pool-item:hover{border-color:#D3DCCF;background:#FCFDFB;}
+.pool-top{display:flex;gap:9px;align-items:flex-start;}
+.pool-title{font-size:14px;font-weight:650;flex:1;min-width:0;}
+.pool-meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:7px;color:var(--txt-3);font-size:12px;}
+.pool-item a{color:var(--accent);text-decoration:none;font-size:12px;}
+.pool-item a:hover{text-decoration:underline;}
 
-  /* topic card */
-  .topic-card{border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 11px;margin-bottom:7px;cursor:pointer;transition:.15s;background:#fff;}
-  .topic-card:hover{border-color:#d9dbe2;background:#fcfcfd;}
-  .topic-card.active{border-color:var(--accent);background:var(--accent-soft);}
-  .topic-head{display:flex;gap:8px;align-items:flex-start;}
-  .topic-idx{font-size:11px;font-weight:700;color:var(--txt-3);font-variant-numeric:tabular-nums;padding-top:1px;}
-  .topic-title{font-size:12.8px;font-weight:600;flex:1;min-width:0;}
-  .topic-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;}
-  .topic-why{margin-top:7px;font-size:11px;color:var(--txt-3);}
+/* ---------------- 表单 ---------------- */
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:12.5px;font-weight:700;color:var(--txt-2);margin-bottom:6px;}
+.inp{width:100%;border:1px solid var(--line-2);border-radius:10px;padding:8px 11px;outline:none;
+  background:#FBFCFA;font-size:13.5px;transition:.15s;}
+.inp:focus{border-color:#A9C7B4;background:#fff;box-shadow:0 0 0 3px rgba(47,122,87,.08);}
+textarea.inp{resize:vertical;line-height:1.75;}
+.row{display:flex;gap:9px;align-items:center;}
+.row.wrap{flex-wrap:wrap;}
+.seg{display:flex;gap:6px;flex-wrap:wrap;}
+.seg button{border:1px solid var(--line-2);background:#fff;border-radius:9px;padding:6px 12px;
+  font-size:13px;font-weight:600;color:var(--txt-2);}
+.seg button.on{background:var(--accent-soft);border-color:#AFCDBA;color:var(--accent-deep);}
 
-  /* right editor */
-  .field{margin-bottom:10px;}
-  .field label{display:block;font-size:11.5px;font-weight:650;color:var(--txt-2);margin-bottom:5px;}
-  .inp{width:100%;border:1px solid var(--line-2);border-radius:9px;padding:7px 10px;outline:none;background:#fbfbfc;transition:.15s;}
-  .inp:focus{border-color:#c9ccd6;background:#fff;}
-  textarea.inp{resize:vertical;line-height:1.7;}
-  .row{display:flex;gap:8px;align-items:center;}
-  .row.wrap{flex-wrap:wrap;}
+/* ---------------- 检测 / 统计 / 表格 ---------------- */
+.check{border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:9px;background:#fff;}
+.check .c-top{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;}
+.check .c-val{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;}
+.bar{height:6px;border-radius:6px;background:#EDF1E9;margin-top:8px;overflow:hidden;}
+.bar > i{display:block;height:100%;border-radius:6px;transition:width .3s;}
+.bar.g > i{background:var(--accent);} .bar.a > i{background:var(--amber);} .bar.r > i{background:var(--red);}
+.c-note{margin-top:7px;font-size:12px;color:var(--txt-3);line-height:1.7;}
+.kv{font-size:13.5px;color:var(--txt);background:#FBFCFA;border:1px solid var(--line);border-radius:10px;padding:8px 11px;}
+.verdict{border-radius:11px;padding:11px 13px;font-size:13px;font-weight:650;display:flex;gap:8px;align-items:center;}
+.verdict.ok{background:var(--accent-soft);color:var(--accent-deep);}
+.verdict.warn{background:var(--amber-soft);color:var(--amber);}
+.verdict.bad{background:var(--red-soft);color:var(--red);}
+.taglist{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;}
+.stat{border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:#FBFCFA;}
+.stat .k{font-size:12px;color:var(--txt-3);font-weight:650;}
+.stat .v{font-size:22px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums;letter-spacing:-.4px;}
+table.tb{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.tb th,table.tb td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:middle;}
+table.tb th{font-size:12px;color:var(--txt-3);font-weight:700;background:#FAFBF8;position:sticky;top:0;}
+table.tb td.num{text-align:right;font-variant-numeric:tabular-nums;}
+table.tb.wide{min-width:960px;}
+table.tb.wide th,table.tb.wide td{white-space:nowrap;}
 
-  /* checks */
-  .check{border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 11px;margin-bottom:8px;}
-  .check .c-top{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;}
-  .check .c-val{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700;}
-  .bar{height:6px;border-radius:6px;background:#eef0f4;margin-top:7px;overflow:hidden;}
-  .bar > i{display:block;height:100%;border-radius:6px;transition:width .3s;}
-  .bar.g > i{background:var(--green);} .bar.a > i{background:var(--amber);} .bar.r > i{background:var(--accent);}
-  .c-note{margin-top:6px;font-size:11px;color:var(--txt-3);}
-  .verdict{border-radius:var(--radius-sm);padding:10px 12px;font-size:12.5px;font-weight:600;display:flex;gap:8px;align-items:center;}
-  .verdict.ok{background:var(--green-soft);color:#047857;}
-  .verdict.warn{background:var(--amber-soft);color:#b45309;}
-  .verdict.bad{background:var(--accent-soft);color:#d81e3f;}
-  .taglist{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+/* ---------------- 关键词 / 清单 / 方法库 ---------------- */
+.kw-group{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:11px;background:#fff;}
+.kw-group h4{margin:0 0 5px;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.kw-group h4 .hint{font-size:12px;font-weight:500;color:var(--txt-3);}
+.kw-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;}
+.kw{border:1px solid var(--line-2);background:#FBFCFA;border-radius:999px;padding:4px 11px;font-size:12.5px;
+  color:var(--txt-2);display:inline-flex;gap:7px;align-items:center;}
+.kw .x{cursor:pointer;color:var(--txt-3);font-weight:800;}
+.kw .x:hover{color:var(--red);}
+.kw-add{display:flex;gap:7px;margin-top:9px;}
+.kw-add input{flex:1;border:1px solid var(--line-2);border-radius:10px;padding:6px 10px;outline:none;
+  background:#FBFCFA;font-size:13px;}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:14px 18px;border:1px solid var(--line);
+  border-radius:12px;margin-bottom:8px;background:#fff;}
+.chk input{margin-top:3px;width:16px;height:16px;accent-color:var(--accent);}
+.chk.done{background:var(--accent-soft);border-color:#CBE2D1;}
+.chk .chk-t{font-size:13.5px;font-weight:650;}
+.chk .chk-d{font-size:12px;color:var(--txt-3);}
+.kb{border:1px solid var(--line);border-radius:12px;margin-bottom:9px;overflow:hidden;background:#fff;}
+.kb summary{cursor:pointer;padding:11px 14px;font-size:13.5px;font-weight:700;background:#FAFBF8;
+  list-style:none;display:flex;align-items:center;}
+.kb summary::-webkit-details-marker{display:none;}
+.kb summary::after{content:"⌄";margin-left:auto;color:var(--txt-3);}
+.kb[open] summary::after{transform:rotate(180deg);}
+.kb .kb-body{padding:12px 14px;border-top:1px solid var(--line);}
+.kb textarea{width:100%;border:1px solid var(--line-2);border-radius:10px;padding:9px 11px;outline:none;
+  background:#FBFCFA;line-height:1.7;resize:vertical;font-size:13.5px;}
 
-  /* keyword groups */
-  .kw-group{border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px 12px;margin-bottom:10px;}
-  .kw-group h4{margin:0 0 4px;font-size:12.5px;font-weight:650;display:flex;align-items:center;gap:8px;}
-  .kw-group h4 .hint{font-size:11px;font-weight:400;color:var(--txt-3);}
-  .kw-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
-  .kw{border:1px solid var(--line-2);background:#fbfbfc;border-radius:20px;padding:3px 9px;font-size:11.5px;color:var(--txt-2);display:inline-flex;gap:6px;align-items:center;}
-  .kw .x{cursor:pointer;color:var(--txt-3);font-weight:700;}
-  .kw .x:hover{color:var(--accent);}
-  .kw-add{display:flex;gap:6px;margin-top:8px;}
-  .kw-add input{flex:1;border:1px solid var(--line-2);border-radius:9px;padding:5px 9px;outline:none;background:#fbfbfc;}
+/* ---------------- 员工卡片 / 提示 ---------------- */
+.adm-emp{border:1px solid var(--line);border-radius:13px;padding:13px 15px;margin-bottom:10px;background:#fff;}
+.adm-emp .hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.adm-emp .nm{font-weight:750;font-size:14.5px;}
+.adm-emp .kpi{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;}
+.adm-detail{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;
+  color:var(--txt-2);line-height:1.9;}
+.adm-detail b{color:var(--txt);}
+.adm-detail .ln{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hint-box{background:#F1F6F1;border:1px solid #DEEAE0;border-radius:12px;padding:11px 13px;font-size:12.5px;
+  color:#38584A;line-height:1.75;margin-bottom:12px;}
+.divider{height:1px;background:var(--line);margin:14px 0;}
+.empty-tip{color:var(--txt-3);font-size:13px;text-align:center;padding:26px 10px;line-height:1.8;}
+.pad{padding:18px 20px;}
 
-  /* table */
-  table.tb{width:100%;border-collapse:collapse;font-size:12px;}
-  table.tb th,table.tb td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:middle;}
-  table.tb th{font-size:11px;color:var(--txt-3);font-weight:650;background:#fafbfc;position:sticky;top:0;}
-  table.tb td.num{text-align:right;font-variant-numeric:tabular-nums;}
-  table.tb.wide{min-width:940px;}
-  table.tb.wide th,table.tb.wide td{white-space:nowrap;}
-  .mini{border:1px solid var(--line-2);border-radius:8px;padding:3px 7px;font-size:11px;background:#fff;}
-  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px;}
-  .stat{border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 11px;background:#fcfcfd;}
-  .stat .k{font-size:11px;color:var(--txt-3);font-weight:600;}
-  .stat .v{font-size:18px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;}
+/* ---------------- 弹窗 / 提示条 / 登录 ---------------- */
+.overlay{position:fixed;inset:0;background:rgba(24,32,26,.36);display:none;align-items:center;
+  justify-content:center;z-index:60;padding:20px;}
+.overlay.show{display:flex;}
+.modal{background:#fff;border-radius:18px;width:540px;max-width:100%;max-height:88vh;overflow-y:auto;
+  box-shadow:0 24px 60px rgba(20,30,24,.24);}
+.modal-head{padding:18px 22px 13px;border-bottom:1px solid var(--line);display:flex;align-items:center;}
+.modal-head h3{margin:0;font-size:16.5px;font-weight:750;}
+.modal-head .x{margin-left:auto;cursor:pointer;color:var(--txt-3);font-size:20px;line-height:1;}
+.modal-body{padding:18px 22px;}
+.modal-foot{padding:13px 22px 20px;display:flex;gap:9px;justify-content:flex-end;}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(18px);background:#1F2A23;
+  color:#fff;padding:10px 18px;border-radius:11px;font-size:13px;font-weight:600;opacity:0;
+  pointer-events:none;transition:.25s;z-index:80;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.daily-form{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.daily-form .field{margin:0;}
+.daily-form .full{grid-column:1/-1;}
+.sub{color:var(--txt-3);font-weight:400;font-size:12.5px;}
+.gate{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:20px;overflow:auto;
+  background:radial-gradient(900px 420px at 20% -10%, #E4F1E7 0%, rgba(228,241,231,0) 62%),
+    radial-gradient(820px 440px at 100% 8%, #EDF1E6 0%, rgba(237,241,230,0) 60%), var(--bg);}
+.gate.show{display:flex;}
+.gate-card{width:100%;max-width:540px;background:#fff;border:1px solid var(--line);border-radius:20px;
+  box-shadow:0 18px 48px rgba(24,34,28,.12);padding:30px 28px 24px;}
+.gate-logo{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;letter-spacing:.2px;}
+.gate-logo .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
+.gate-sub{color:var(--txt-3);font-size:13px;margin:7px 0 20px;}
+.gate-body .field{margin-bottom:13px;}
+.gate-note{font-size:12.5px;color:var(--txt-3);line-height:1.85;}
+.gate-remember{display:flex;align-items:center;gap:8px;margin:14px 2px 0;font-size:13px;color:var(--txt-2);
+  cursor:pointer;user-select:none;}
+.gate-remember input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;}
+.gate-links{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px;padding-top:16px;border-top:1px dashed var(--line-2);}
+.gate-err{color:var(--red);font-size:12.5px;margin-top:9px;min-height:18px;}
+.role-seg{display:flex;gap:8px;background:#F1F4EF;border-radius:12px;padding:4px;margin-bottom:16px;}
+.role-seg button{flex:1;border:none;background:transparent;border-radius:9px;padding:9px 8px;
+  font-size:13.5px;font-weight:700;color:var(--txt-2);}
+.role-seg button.on{background:#fff;color:var(--txt);box-shadow:0 1px 3px rgba(24,34,28,.1);}
+.who{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--txt-2);}
+.who .badge{background:#2A3A2F;color:#fff;border-radius:999px;padding:2px 9px;font-weight:700;font-size:11.5px;}
+.who .badge.admin{background:var(--accent);}
 
-  /* checklist */
-  .chk{display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:7px;background:#fff;}
-  .chk input{margin-top:3px;width:15px;height:15px;accent-color:var(--accent);}
-  .chk.done{background:var(--green-soft);border-color:#cdeedd;}
-  .chk .chk-t{font-size:12.5px;font-weight:600;}
-  .chk .chk-d{font-size:11px;color:var(--txt-3);}
-  .kb{border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;overflow:hidden;}
-  .kb summary{cursor:pointer;padding:9px 12px;font-size:12.5px;font-weight:650;background:#fafbfc;list-style:none;}
-  .kb summary::-webkit-details-marker{display:none;}
-  .kb .kb-body{padding:10px 12px;}
-  .kb textarea{width:100%;border:1px solid var(--line-2);border-radius:9px;padding:8px 10px;outline:none;background:#fbfbfc;line-height:1.7;resize:vertical;}
-
-  /* modal */
-  .overlay{position:fixed;inset:0;background:rgba(20,20,30,.34);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;}
-  .overlay.show{display:flex;}
-  .modal{background:#fff;border-radius:16px;width:520px;max-width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(20,20,30,.22);}
-  .modal-head{padding:16px 20px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;}
-  .modal-head h3{margin:0;font-size:15px;font-weight:700;}
-  .modal-head .x{margin-left:auto;cursor:pointer;color:var(--txt-3);font-size:18px;line-height:1;}
-  .modal-body{padding:16px 20px;}
-  .modal-foot{padding:12px 20px 18px;display:flex;gap:8px;justify-content:flex-end;}
-  .seg{display:flex;gap:6px;flex-wrap:wrap;}
-  .seg button{border:1px solid var(--line-2);background:#fff;border-radius:9px;padding:6px 11px;font-size:12.5px;font-weight:550;color:var(--txt-2);}
-  .seg button.on{background:var(--txt);border-color:var(--txt);color:#fff;}
-
-  /* toast */
-  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--txt);color:#fff;
-    padding:9px 16px;border-radius:10px;font-size:12.5px;font-weight:550;opacity:0;pointer-events:none;transition:.25s;z-index:80;}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  .hint-box{background:var(--blue-soft);border:1px solid #dbe7ff;border-radius:var(--radius-sm);padding:9px 11px;font-size:11.5px;color:#1d4ed8;line-height:1.7;margin-bottom:10px;}
-  .divider{height:1px;background:var(--line);margin:12px 0;}
-
-  /* ===== 多用户：身份入口 ===== */
-  .gate{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:20px;overflow:auto;
-    background:radial-gradient(1100px 460px at 18% -8%, #ffe9ee 0%, rgba(255,233,238,0) 62%),
-      radial-gradient(900px 480px at 102% 6%, #e9f0ff 0%, rgba(233,240,255,0) 58%), var(--bg);}
-  .gate.show{display:flex;}
-  .gate-card{width:100%;max-width:520px;background:var(--panel);border:1px solid var(--line);border-radius:18px;
-    box-shadow:0 14px 44px rgba(20,20,30,.11);padding:26px 24px 22px;}
-  .gate-logo{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:750;letter-spacing:.2px;}
-  .gate-logo .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
-  .gate-sub{color:var(--txt-3);font-size:12.5px;margin:6px 0 18px;}
-  .role-seg{display:flex;gap:8px;background:#f2f3f6;border-radius:12px;padding:4px;margin-bottom:16px;}
-  .role-seg button{flex:1;border:none;background:transparent;border-radius:9px;padding:9px 8px;font-size:13px;font-weight:650;color:var(--txt-2);transition:.15s;}
-  .role-seg button.on{background:#fff;color:var(--txt);box-shadow:0 1px 3px rgba(20,20,30,.10);}
-  .gate-body .field{margin-bottom:12px;}
-  .gate-note{font-size:11.5px;color:var(--txt-3);line-height:1.8;}
-  .gate-remember{display:flex;align-items:center;gap:7px;margin:12px 2px 0;font-size:12.5px;color:var(--txt-2);cursor:pointer;user-select:none;}
-  .gate-remember input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;}
-  .gate-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line-2);}
-  .gate-err{color:var(--accent);font-size:12px;margin-top:8px;min-height:17px;}
-  .who{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--txt-2);}
-  .who .badge{background:var(--txt);color:#fff;border-radius:20px;padding:2px 9px;font-weight:600;font-size:11px;}
-  .who .badge.admin{background:var(--accent);}
-
-  /* ===== 主管后台 / 每日上报 ===== */
-  .adm-emp{border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px 12px;margin-bottom:9px;background:#fff;}
-  .adm-emp .hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-  .adm-emp .nm{font-weight:700;font-size:13px;}
-  .adm-emp .kpi{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
-  .adm-detail{margin-top:9px;padding-top:9px;border-top:1px dashed var(--line-2);font-size:12px;color:var(--txt-2);line-height:1.95;}
-  .adm-detail b{color:var(--txt);}
-  .adm-detail .ln{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .link-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:#fff;border-radius:10px;
-    padding:8px 12px;font-size:12.5px;font-weight:600;color:var(--txt);text-decoration:none;transition:.15s;}
-  .link-btn:hover{border-color:var(--accent);color:var(--accent);}
-  .link-btn.hot{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .link-btn.hot:hover{background:#ef2340;color:#fff;}
-  .daily-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .daily-form .field{margin:0;}
-  .daily-form .full{grid-column:1/-1;}
-  .sub{color:var(--txt-3);font-weight:400;font-size:11.5px;}
+/* ---------------- 响应式 ---------------- */
+@media(max-width:1500px){ .workspace.with-editor{grid-template-columns:minmax(0,1fr) 400px;} }
+@media(max-width:1240px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);}
+  .sidebar{flex-direction:row;align-items:center;gap:10px;padding:10px 14px;overflow-x:auto;
+    border-right:none;border-bottom:1px solid var(--line);}
+  .ws{padding:0;flex:0 0 auto;} .ws .ws-txt{display:none;}
+  .nav{flex-direction:row;gap:6px;overflow:visible;} .nav-sep{display:none;}
+  .tab{width:auto;white-space:nowrap;padding:7px 12px;} .tab .cnt{display:none;}
+  .acct-list,.side-foot{display:none;}
+  .page-head{padding:18px 18px 0;} .workspace{padding:14px 18px 20px;}
+  .workspace,.workspace.with-editor{grid-template-columns:1fr;}
+  .edit-pane{display:none;}
+}
+@media(max-width:900px){
+  .board{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .page-head h1{font-size:22px;}
+}
+@media(max-width:640px){
+  .board{grid-template-columns:1fr;}
+  .ph-right{display:none;}
+}
+@media print{ .sidebar,.page-head,.filters{display:none;} }
 </style>
 </head>
 <body>
@@ -267,57 +411,69 @@
 </div>
 
 <div class="app">
-  <div class="topbar">
-    <div class="brand"><span class="dot"></span>DSE 矩阵内容工作台 <small>主管版</small></div>
-    <div class="top-meta">
-      <span>素材库 <b id="metaPool">0</b> 条</span>
-      <span>当前账号 <b id="metaAcct">—</b></span>
-      <span>数据批次 <b id="metaBatch">—</b></span>
-      <span>选题 <b id="metaTopic">0</b></span>
-      <span class="who" id="who"></span>
-    </div>
-  </div>
-
-  <div class="layout">
-    <!-- 左：矩阵账号 -->
-    <div class="col">
-      <div class="col-head">
-        <h2>矩阵账号</h2>
-        <span class="sub" id="acctCount">0 个</span>
-        <span class="spacer"></span>
-        <button class="btn sm" id="btnNewAcct">+ 新建</button>
-      </div>
-      <div class="col-body" id="acctBody"></div>
+  <aside class="sidebar">
+    <div class="ws">
+      <div class="ws-logo">书</div>
+      <div class="ws-txt"><b>DSE 矩阵工作台</b><span>内容协作 · 主管版</span></div>
     </div>
 
-    <!-- 中：工作区 -->
-    <div class="col">
-      <div class="tabs" id="tabs">
-        <button class="tab active" data-tab="pool">素材池<span class="cnt" id="tabPoolCnt">0</span></button>
-        <button class="tab" data-tab="topic">选题库<span class="cnt" id="tabTopicCnt">0</span></button>
-        <button class="tab" data-tab="kw">关键词库</button>
-        <button class="tab" data-tab="material">素材库</button>
-        <button class="tab" data-tab="review" id="tabReview">数据回顾</button>
-        <button class="tab" data-tab="daily" id="tabDaily">全员笔记</button>
-        <button class="tab" data-tab="lead" id="tabLead">客资统计</button>
-        <button class="tab" data-tab="team" id="tabTeam">团队日报</button>
-        <button class="tab" data-tab="admin" id="tabAdmin">主管后台</button>
-        <button class="tab" data-tab="auto">自动化</button>
-      </div>
-      <div class="col-body" id="panelBody"></div>
-    </div>
+    <nav class="nav" id="tabs">
+      <div class="nav-sep">工作区</div>
+      <button class="tab active" data-tab="board"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1.4"/><rect x="9.5" y="4" width="5" height="10" rx="1.4"/><rect x="16" y="4" width="5" height="13" rx="1.4"/></svg></span>任务看板</button>
+      <button class="tab" data-tab="daily" id="tabDaily"><span class="ico"><svg viewBox="0 0 24 24"><path d="M6 3.5h7l5 5V20.5H6z"/><path d="M13 3.5v5h5"/><path d="M9 13h6M9 16.5h4"/></svg></span>全员笔记</button>
+      <button class="tab" data-tab="review" id="tabReview"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 4v16h16"/><path d="M8 16v-4M12.5 16V8M17 16v-6"/></svg></span>数据回顾</button>
+      <button class="tab" data-tab="lead" id="tabLead"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 5.5h16v10H9.5L4 19z"/><path d="M8 9.5h8M8 12.5h5"/></svg></span>客资统计</button>
+      <div class="nav-sep">内容</div>
+      <button class="tab" data-tab="studio"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4.5 19.5l1.2-4.2L16 5l3 3L8.7 18.3z"/><path d="M14 7l3 3"/></svg></span>选题与写帖<span class="cnt" id="tabTopicCnt">0</span></button>
+      <button class="tab" data-tab="pool"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 4l8 3.8-8 3.8-8-3.8z"/><path d="M4 12l8 3.8 8-3.8"/><path d="M4 16.2l8 3.8 8-3.8"/></svg></span>素材池<span class="cnt" id="tabPoolCnt">0</span></button>
+      <button class="tab" data-tab="kw"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 11V5h6l10 10-5.5 5.5z"/><circle cx="8.2" cy="9.2" r="1.3"/></svg></span>关键词库</button>
+      <button class="tab" data-tab="material"><span class="ico"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>素材文件</button>
+      <div class="nav-sep">团队</div>
+      <button class="tab" data-tab="team" id="tabTeam"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="9.5" cy="8.5" r="3"/><path d="M3.5 19c0-3 2.6-4.6 6-4.6s6 1.6 6 4.6"/><path d="M16.5 6.2a3 3 0 0 1 0 5.4"/><path d="M17.6 14.6c1.9.8 3 2.2 3 4.4"/></svg></span>团队日报</button>
+      <button class="tab" data-tab="admin" id="tabAdmin"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 8h9M18 8h2M4 16h4M13 16h7"/><circle cx="15.5" cy="8" r="2"/><circle cx="10.5" cy="16" r="2"/></svg></span>主管后台</button>
+      <button class="tab" data-tab="auto"><span class="ico"><svg viewBox="0 0 24 24"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></svg></span>自动化</button>
+    </nav>
 
-    <!-- 右：写帖 + 检测 -->
-    <div class="col">
-      <div class="col-head">
-        <h2>素人帖生成</h2>
-        <span class="sub" id="editorHint">先选选题</span>
-        <span class="spacer"></span>
-        <button class="btn sm" id="btnRegen" disabled>重新生成</button>
+    <div class="nav-sep">矩阵账号<span class="nav-cnt" id="acctCount">0 个</span><button class="btn-add" id="btnNewAcct" title="新建账号">＋</button></div>
+    <div class="acct-list" id="acctBody"></div>
+
+    <div class="side-foot">
+      <div class="side-meta">
+        <span>素材 <b id="metaPool">0</b> 条</span>
+        <span>选题 <b id="metaTopic">0</b></span>
+        <span>批次 <b id="metaBatch">—</b></span>
       </div>
-      <div class="col-body" id="editorBody">
-        <div class="empty-tip">在「选题库」里点一个选题选中<br>确认后点「开始写帖」生成并自检</div>
+      <div class="who" id="who"></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="page-head">
+      <div class="ph-left">
+        <div class="crumb" id="pageCrumb">任务工作区</div>
+        <h1 id="pageTitle">任务看板</h1>
+        <p class="page-sub" id="pageSub">把今天每个人要发的笔记排好，一眼看到谁发了、谁还没动。</p>
       </div>
+      <div class="ph-right">
+        <span class="ph-acct">当前账号 <b id="metaAcct">—</b></span>
+        <button class="btn primary lg" id="headAction">＋ 新建账号</button>
+      </div>
+    </header>
+
+    <div class="workspace" id="workspace">
+      <section class="panel" id="panelWrap">
+        <div class="panel-body" id="panelBody"></div>
+      </section>
+      <aside class="edit-pane" id="editPane" hidden>
+        <div class="pane-head">
+          <div class="pane-title">写帖</div>
+          <span class="pane-sub" id="editorHint">先选选题</span>
+          <button class="btn sm ghost" id="btnRegen" disabled>重新生成</button>
+        </div>
+        <div class="pane-body" id="editorBody">
+          <div class="empty-tip">在左边点一个选题选中<br>确认后点「开始写帖」</div>
+        </div>
+      </aside>
     </div>
   </div>
 </div>
@@ -1806,7 +1962,7 @@ function renderAccounts(){
       el.onclick = ()=>{
         state.currentId = el.dataset.id; state.activeTopic = null;
         save(); renderAccounts(); renderMeta();
-        if(state.tab==='topic') renderTopics();
+        if(state.tab==='studio') renderTopics();
         resetEditor('已切换人设 · 选题已自动切到该人设');
       };
     });
@@ -1829,7 +1985,7 @@ function removeAccount(id){
         if(state.currentId===id) state.currentId = (state.accounts[0]||{}).id;
         state.activeTopic = null;
         save(); closeModal(); renderAccounts(); renderMeta();
-        if(state.tab==='topic') renderTopics();
+        if(state.tab==='studio') renderTopics();
         toast('已移除「'+a.name+'」');
       }}
     ]);
@@ -1860,13 +2016,13 @@ function renderPoolPanel(){
       '<select class="sel" id="fBatch"><option>全部</option>'+bl.map(b=>'<option'+(f.batch===b?' selected':'')+'>'+b+'</option>').join('')+'</select>'+
       '<input class="search" id="fQ" placeholder="搜索标题 / 作者" value="'+esc(f.q)+'">'+
     '</div>'+
-    '<div style="display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)">'+
+    '<div style="display:flex;gap:8px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)">'+
       '<button class="btn primary" id="btnGen">生成 20 个选题</button>'+
       '<button class="btn" id="btnImport">导入更新</button>'+
       '<button class="btn" id="btnSync">生成同步码</button>'+
       '<button class="btn ghost" id="btnReload">重载数据文件</button>'+
       '<button class="btn ghost" id="btnExpPool">导出</button>'+
-      '<span style="color:var(--txt-3);font-size:11.5px;margin-left:auto">当前筛选 '+items.length+' / 共 '+state.pool.length+' 条</span>'+
+      '<span style="color:var(--txt-3);font-size:13px;margin-left:auto">当前筛选 '+items.length+' / 共 '+state.pool.length+' 条</span>'+
     '</div>';
 
   const list = items.length ? items.map(it=>
@@ -1880,7 +2036,7 @@ function renderPoolPanel(){
       ? '<div class="empty-tip">没有符合条件的素材<br>素材其实还在（共 '+state.pool.length+' 条），只是被上面的筛选挡住了<br><button class="btn sm" id="btnShowAll" style="margin-top:10px">显示全部 '+state.pool.length+' 条</button></div>'
       : '<div class="empty-tip">素材库是空的<br>点「重载数据文件」或「导入更新」补充</div>');
 
-  $('#panelBody').innerHTML = head + '<div style="padding:12px">'+list+'</div>';
+  $('#panelBody').innerHTML = head + '<div class="pad">'+list+'</div>';
 
   const bs = $('#btnShowAll');
   if(bs) bs.onclick = ()=>{ state.filter.src='全部'; state.filter.time='全部'; state.filter.batch='全部'; state.filter.q=''; renderPoolPanel(); renderMeta(); };
@@ -2045,7 +2201,7 @@ function genTopics(){
   state.activeTopic = null;
   save();
   resetEditor('已生成选题 · 待挑选');
-  switchTab('topic'); renderMeta();
+  switchTab('studio'); renderMeta();
   // 统计与其他人设的重合度，直接展示"不重复"效果
   const others = (state.accounts||[]).filter(x=>x.id!==a.id);
   let dup = 0;
@@ -2063,44 +2219,65 @@ function genTopicsAll(){
   state.activeTopic = null;
   save();
   resetEditor('已为全部人设生成选题 · 待挑选');
-  switchTab('topic'); renderMeta();
+  switchTab('studio'); renderMeta();
   toast('已为 '+accts.length+' 个人设各生成 20 条选题 · 切换人设会自动切换选题');
 }
+let topicCatFilter = '全部';
 function renderTopics(){
   const a = curAcct();
   const box = $('#panelBody');
   const ts = curTopics();
   if(!ts.length){
-    box.innerHTML = '<div class="empty-tip">「'+esc(a?a.name:'—')+'」还没有选题<br>点下面按钮为这个人设生成，或一次性给所有人设都生成好<br>'+
-      '<button class="btn primary sm" id="btnGenCur" style="margin-top:12px">为该人设生成 20 条选题</button>'+
-      '<button class="btn sm" id="btnGenAll" style="margin-top:8px">⚡ 为每个人设各生成 20 条</button></div>';
+    box.innerHTML = '<div class="pad"><div class="empty-tip">「'+esc(a?a.name:'—')+'」还没有选题<br>点下面按钮为这个账号生成，或一次性把所有账号都生成好<br>'+
+      '<div style="display:flex;gap:9px;justify-content:center;margin-top:16px;flex-wrap:wrap">'+
+        '<button class="btn primary" id="btnGenCur">为这个账号生成 20 条</button>'+
+        '<button class="btn" id="btnGenAll">⚡ 每个账号各生成 20 条</button>'+
+      '</div></div></div>';
     $('#btnGenCur').onclick = genTopics;
     $('#btnGenAll').onclick = genTopicsAll;
     return;
   }
   const cnt = {};
   ts.forEach(t=> cnt[t.cat]=(cnt[t.cat]||0)+1);
-  const legend = Object.keys(CAT_RATIO).map(c=>'<span class="tag '+CAT_CLS[c]+'">'+CAT_LABEL[c]+' '+CAT_RATIO[c]+'</span>').join('');
+  const cats = ['全部'].concat(Object.keys(CAT_RATIO));
+  const cur = (topicCatFilter!=='全部' && cnt[topicCatFilter]) ? topicCatFilter : '全部';
+  const chips = cats.map(c=> '<button class="chip'+(cur===c?' active':'')+'" data-cat="'+esc(c)+'">'+
+      (c==='全部'?'全部':CAT_LABEL[c])+'<span class="cnum">'+(c==='全部'?ts.length:(cnt[c]||0))+'</span></button>').join('');
+  const plan = planTopics();
+  const others = (state.accounts||[]).filter(x=>x.id!==(a?a.id:''));
+  const maxDup = others.length ? Math.max(...others.map(o=>{ const s=new Set(plan[o.id]||[]); return (plan[a?a.id:'']||[]).filter(t=>s.has(t.title)).length; })) : 0;
+  const list = ts.map((t,i)=>({i})).filter(x=> cur==='全部' || ts[x.i].cat===cur);
   box.innerHTML =
-    '<div style="padding:10px 12px;border-bottom:1px solid var(--line);display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
-      '<span style="font-size:11.5px;color:var(--txt-3)">内容比例</span>'+legend+
-      '<span style="margin-left:auto;font-size:11.5px;color:var(--txt-3)">当前账号「'+esc(a?a.name:'')+'」 · 点选题即可写帖</span>'+
-      (function(){ const p=planTopics(), others=(state.accounts||[]).filter(x=>x.id!==(a?a.id:'')); const md=others.length?Math.max(...others.map(o=>{const s=new Set(p[o.id]||[]);return (p[a?a.id:'']||[]).filter(t=>s.has(t.title)).length;})):0; return '<span class="tag '+(md<=2?'cat':'')+'" style="margin-left:8px" title="与其他人设的选题重合条数">人设不重复 · 最多重 '+md+'</span>'; })()+
-      '<button class="btn sm" id="btnGenAll">⚡ 为每个人设各生成20条</button>'+
-      '<button class="btn sm" id="btnRepTopic">上报我的选题</button>'+
-      '<button class="btn sm ghost" id="btnExpTopic">导出选题</button>'+
-      '<button class="btn sm" id="btnBatch">批量出成品（当前人设）</button>'+
-      '<button class="btn sm" id="btnBatchAll">批量出成品（全部人设）</button>'+
-    '</div>'+
-    '<div style="padding:12px">'+ ts.map((t,i)=>
-      '<div class="topic-card'+(state.activeTopic===t?' active':'')+'" data-idx="'+i+'">'+
-        '<div class="topic-head"><span class="topic-idx">'+String(i+1).padStart(2,'0')+'</span>'+
-        '<span class="topic-title">'+esc(t.title)+'</span></div>'+
-        '<div class="topic-tags"><span class="tag '+CAT_CLS[t.cat]+'">'+CAT_LABEL[t.cat]+'</span>'+
-          '<span class="tag">'+esc(t.type)+'</span><span class="tag kw">'+esc(t.kw)+'</span>'+
-          '<span class="tag">'+t.aud.map(x=>IDENTITY_LABEL[x]||x).join('/')+'</span></div>'+
-        '<div class="topic-why">素材来源：'+esc(Array.from(new Set(t.src)).join(' / '))+' · '+(t.m?t.m.length:0)+' 个方法 · '+(t.aud.length===1?'人设专属':'通用')+'</div>'+
-      '</div>').join('')+'</div>';
+    '<div class="pad">'+
+      '<div class="filters-bar">'+
+        '<span class="flabel">账号</span>'+
+        '<span class="chip">'+esc(a?a.name:'—')+'</span>'+
+        '<span class="flabel" style="margin-left:8px">类型</span>'+chips+
+        '<span class="spacer"></span>'+
+        '<button class="btn sm" id="btnGenAll">⚡ 每个账号生成 20 条</button>'+
+      '</div>'+
+      '<div class="topic-toolbar">'+
+        '<span class="sub">共 '+ts.length+' 条 · 与其他人设最多重复 '+maxDup+' 条 · 点一条就能在右边写帖</span>'+
+        '<div class="tb-acts">'+
+          '<button class="btn sm ghost" id="btnRepTopic">上报我的选题</button>'+
+          '<button class="btn sm ghost" id="btnExpTopic">导出选题</button>'+
+          '<button class="btn sm ghost" id="btnBatch">批量出成品</button>'+
+          '<button class="btn sm ghost" id="btnBatchAll">全部账号出成品</button>'+
+        '</div>'+
+      '</div>'+
+      (list.length ? '<div class="topic-grid">'+list.map(x=>{
+        const t = ts[x.i], i = x.i;
+        return '<div class="topic-card'+(state.activeTopic===t?' active':'')+'" data-idx="'+i+'">'+
+          '<div class="topic-head"><span class="topic-idx">'+String(i+1).padStart(2,'0')+'</span>'+
+          '<span class="topic-title">'+esc(t.title)+'</span></div>'+
+          '<div class="topic-tags"><span class="tag '+CAT_CLS[t.cat]+'">'+CAT_LABEL[t.cat]+'</span>'+
+            '<span class="tag">'+esc(t.type)+'</span><span class="tag kw">'+esc(t.kw)+'</span>'+
+            '<span class="tag">'+t.aud.map(x=>IDENTITY_LABEL[x]||x).join('/')+'</span></div>'+
+          '<div class="topic-why">素材来源：'+esc(Array.from(new Set(t.src)).join(' / '))+' · '+(t.m?t.m.length:0)+' 个方法 · '+(t.aud.length===1?'人设专属':'通用')+'</div>'+
+        '</div>';
+      }).join('')+'</div>' : '<div class="empty-tip">这个类型下暂时没有选题<br>切回「全部」看看</div>')+
+    '</div>';
+  $$('#panelBody .chip[data-cat]').forEach(b=> b.onclick = ()=>{ topicCatFilter = b.dataset.cat; renderTopics(); });
   $$('#panelBody .topic-card').forEach(el=>{
     el.onclick = ()=> selectTopic(ts[+el.dataset.idx]);
   });
@@ -2118,7 +2295,7 @@ function selectTopic(t){
 function resetEditor(hint){
   $('#editorHint').textContent = hint || '先选选题';
   $('#btnRegen').disabled = true;
-  $('#editorBody').innerHTML = '<div class="empty-tip">在「选题库」里点一个选题选中<br>确认后点「开始写帖」生成并自检</div>';
+  $('#editorBody').innerHTML = '<div class="empty-tip">在左边点一个选题选中<br>确认后点「开始写帖」生成并自检</div>';
 }
 function renderTopicPreview(t){
   const a = curAcct();
@@ -2132,9 +2309,9 @@ function renderTopicPreview(t){
       '<span class="tag">'+esc(t.type)+'</span><span class="tag kw">'+esc(t.kw)+'</span>'+
       '<span class="tag">'+t.aud.map(x=>IDENTITY_LABEL[x]||x).join('/')+'</span></div></div>'+
     '<div class="field" style="margin-top:12px"><label>匹配账号</label>'+
-      '<div style="font-size:12.5px;color:var(--txt-2)">'+esc(a?a.name:'')+' · 语气 '+esc(a?a.tone:'')+'</div></div>'+
+      '<div style="font-size:13px;color:var(--txt-2)">'+esc(a?a.name:'')+' · 语气 '+esc(a?a.tone:'')+'</div></div>'+
     '<div class="field"><label>正文将展开的 '+effectiveMethods(t).length+' 个方法</label>'+
-      '<div style="font-size:12.5px;color:var(--txt-2);line-height:1.85">'+(effectiveMethods(t).map(m=>'· '+esc(m.name)+'（'+m.steps.length+' 步）').join('<br>') || '· 暂无')+'</div></div>'+
+      '<div style="font-size:13px;color:var(--txt-2);line-height:1.85">'+(effectiveMethods(t).map(m=>'· '+esc(m.name)+'（'+m.steps.length+' 步）').join('<br>') || '· 暂无')+'</div></div>'+
     '<button class="btn primary block" id="btnStartWrite">开始写帖</button>';
   $('#btnStartWrite').onclick = ()=> openEditor(t);
 }
@@ -2788,7 +2965,7 @@ function renderKwPanel(){
     {k:'geo',  t:'地域长尾词', hint:'杭州/浙江优先'}
   ];
   $('#panelBody').innerHTML =
-    '<div style="padding:12px">'+
+    '<div class="pad">'+
     '<div class="hint-box">每天往关键词库补词：来源固定为小红书搜索框、联想词、搜索结果页、热门标题、评论区高频问题、私信问题。</div>'+
     groups.map(g=>
       '<div class="kw-group"><h4>'+g.t+' <span class="hint">'+g.hint+'</span></h4>'+
@@ -2839,7 +3016,7 @@ function openLinks(){
 function renderMaterialPanel(){
   const done = MATERIAL_CHK.filter(m=>state.chk[m.id]).length;
   $('#panelBody').innerHTML =
-    '<div style="padding:12px">'+
+    '<div class="pad">'+
     '<div class="col-head" style="border:none;padding:0 0 10px"><h2>每周素材清单</h2><span class="sub">'+done+'/'+MATERIAL_CHK.length+' 已备齐</span></div>'+
     MATERIAL_CHK.map(m=>'<label class="chk'+(state.chk[m.id]?' done':'')+'"><input type="checkbox" data-chk="'+m.id+'"'+(state.chk[m.id]?' checked':'')+'>'+
       '<span><span class="chk-t">'+esc(m.t)+'</span><br><span class="chk-d">'+esc(m.d)+'</span></span></label>').join('')+
@@ -2854,7 +3031,7 @@ function renderMaterialPanel(){
     WRITING_KB.map(s=>
       '<details class="kb"><summary>'+esc(s.t)+'</summary><div class="kb-body">'+
         '<div class="c-note" style="margin-bottom:6px">'+esc(s.d)+'</div>'+
-        '<ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.9;color:var(--txt-2)">'+
+        '<ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.9;color:var(--txt-2)">'+
           s.rules.map(r=>'<li>'+esc(r)+'</li>').join('')+
         '</ul></div></details>').join('')+
     '</div>';
@@ -3007,7 +3184,7 @@ function renderReviewPanel(){
   const WK = cxSplit(weekCx);
 
   $('#panelBody').innerHTML =
-    '<div style="padding:12px">'+
+    '<div class="pad">'+
       '<div class="hint-box"><b>这里的数据只给主管看，员工那边看不到。</b>员工用你录入的昵称登录员工版后，上报的数据<b>几秒内自动同步到这里，不用发汇总码</b>。<br>'+
         '上面是<b>今天的数据</b>，下面是<b>最近 7 天按天分块的本周数据</b>；点「一键汇总本周」合成一段，直接发团队或贴到飞书。</div>'+
       personaChips()+
@@ -3017,7 +3194,7 @@ function renderReviewPanel(){
         '<button class="btn ghost" id="rvCsv">导出本周数据（CSV）</button>'+
         '<button class="btn ghost" id="rvImport">📥 导入员工汇总码</button>'+
       '</div>'+
-      '<h4 style="font-size:12.5px;margin:0 0 8px">今日数据 · '+esc(today)+' '+esc(weekdayOf(today))+'</h4>'+
+      '<h4 style="font-size:13px;margin:0 0 8px">今日数据 · '+esc(today)+' '+esc(weekdayOf(today))+'</h4>'+
       '<div class="stat-grid">'+
         '<div class="stat"><div class="k">今日笔记</div><div class="v">'+T.n+'</div></div>'+
         '<div class="stat"><div class="k">今日客资</div><div class="v">'+T.cx+'</div></div>'+
@@ -3030,7 +3207,7 @@ function renderReviewPanel(){
         (missing.length?'<div class="c-note" style="color:#b25e00">今天还没上报：'+esc(missing.join('、'))+'</div>':'')+
         '<div style="margin-top:6px"><b>今日新增客资：</b></div>'+tCxHtml+'</div></div>'+
       '<div class="divider"></div>'+
-      '<h4 style="font-size:12.5px;margin:0 0 8px">本周数据 · '+esc(weekFrom.slice(5))+' ~ '+esc(today.slice(5))+' <span style="font-size:11px;color:#999">（按天分块，每天一块）</span></h4>'+
+      '<h4 style="font-size:13px;margin:0 0 8px">本周数据 · '+esc(weekFrom.slice(5))+' ~ '+esc(today.slice(5))+' <span style="font-size:12px;color:#999">（按天分块，每天一块）</span></h4>'+
       '<div class="stat-grid">'+
         '<div class="stat"><div class="k">本周笔记</div><div class="v">'+W.n+'</div></div>'+
         '<div class="stat"><div class="k">本周客资</div><div class="v">'+W.cx+'</div></div>'+
@@ -3041,7 +3218,7 @@ function renderReviewPanel(){
       '</div>'+
       (emps.length? dayCards : '<div class="empty-tip">还没有员工数据<br>员工用你录入的昵称登录员工版后，这里会自动出现（不用发汇总码）<br>如果员工已经登录还是空的，多半是他还没在「我的选题」里点「＋ 登记账号」填昵称和主页链接</div>')+
       '<div class="divider"></div>'+
-      '<h4 style="font-size:12.5px;margin:0 0 8px">本周按员工汇总</h4>'+
+      '<h4 style="font-size:13px;margin:0 0 8px">本周按员工汇总</h4>'+
       (rankRows
         ? '<div style="overflow-x:auto"><table class="tb"><thead><tr><th>员工</th><th>笔记</th><th>浏览</th><th>客资</th><th>家长</th><th>其他人</th><th>未标注</th></tr></thead><tbody>'+rankRows+'</tbody></table></div>'
         : '<div class="empty-tip">本周还没有上报数据</div>')+
@@ -3122,7 +3299,7 @@ function renderLeadPanel(){
         (r.persona?'<span class="tag src-'+esc(r.persona)+'">'+esc(r.persona)+'</span>':'')+
         '<span class="tag">'+esc(r.date)+'</span>'+
       '</div>'+
-      '<div style="font-size:11.5px;color:#8a8f99;margin-top:5px">'+
+      '<div style="font-size:13px;color:#8a8f99;margin-top:5px">'+
         (r.acct? '账号：'+esc(r.acct)+(r.acctLink?' <a href="'+esc(r.acctLink)+'" target="_blank" rel="noopener">主页↗</a>':'') : '')+
         (r.title? ' · 笔记：'+(r.link?'<a href="'+esc(r.link)+'" target="_blank" rel="noopener">《'+esc((r.title||'').slice(0,22))+'》↗</a>':'《'+esc((r.title||'').slice(0,22))+'》') : '')+
       '</div>'+
@@ -3136,7 +3313,7 @@ function renderLeadPanel(){
   }).join('');
 
   $('#panelBody').innerHTML =
-    '<div style="padding:12px">'+
+    '<div class="pad">'+
       '<div class="hint-box"><b>客资只记数量，不再记微信号。</b>微信号直接发到群里；这里按月统计每个员工带来多少客资。<br>'+
         '每篇笔记一块，你可以标：<b>家长 / 其他人各几个</b>、来源是<b>截流</b>还是<b>这篇笔记引流</b>、以及备注。<br>'+
         '标注只存在你本机；导出的 CSV 可以直接导入飞书多维表格。</div>'+
@@ -3149,7 +3326,7 @@ function renderLeadPanel(){
       '</div>'+
       '<div id="ldStats"></div>'+
       '<div class="divider"></div>'+
-      '<h4 style="font-size:12.5px;margin:0 0 8px">客资明细 <span style="font-size:11px;color:#999">（一篇笔记一块）</span></h4>'+
+      '<h4 style="font-size:13px;margin:0 0 8px">客资明细 <span style="font-size:12px;color:#999">（一篇笔记一块）</span></h4>'+
       (cards || '<div class="empty-tip">本月还没有客资记录<br>员工在「每日上报」填了客资数量后，这里会自动出现</div>')+
       '<div class="c-note" style="margin-top:10px;line-height:1.9">「导出客资表」是 CSV，带表头，可以直接导入飞书多维表格。</div>'+
     '</div>';
@@ -3200,7 +3377,7 @@ function renderLeadStats(month){
       '<div class="stat"><div class="k">本月笔记</div><div class="v">'+notes.length+'</div></div>'+
     '</div>'+
     '<div class="c-note" style="margin:-2px 0 10px">来源分布：截流 '+src.jie+' · 笔记引流 '+src.note+' · 其他 '+src.other+'（按每篇笔记的来源标注统计）</div>'+
-    '<h4 style="font-size:12.5px;margin:12px 0 8px">每个员工本月带来的客资</h4>'+
+    '<h4 style="font-size:13px;margin:12px 0 8px">每个员工本月带来的客资</h4>'+
     (empRows
       ? '<div style="overflow-x:auto"><table class="tb"><thead><tr><th>员工</th><th>客资</th><th>家长</th><th>其他人</th><th>未标注</th><th>笔记数</th></tr></thead><tbody>'+empRows+'</tbody></table></div>'
       : '<div class="empty-tip">本月还没有数据</div>');
@@ -3397,12 +3574,12 @@ function renderAutoPanel(){
   const sp = seedPool();
   const meta = sp.meta || null;
   const by = meta && meta.bySource ? meta.bySource : null;
-  const chk = (k,label)=>'<label style="display:inline-flex;gap:6px;align-items:center;font-size:12.5px;margin-right:14px"><input type="checkbox" data-g="'+k+'"'+(g[k]!==false?' checked':'')+'> '+label+'</label>';
+  const chk = (k,label)=>'<label style="display:inline-flex;gap:6px;align-items:center;font-size:13px;margin-right:14px"><input type="checkbox" data-g="'+k+'"'+(g[k]!==false?' checked':'')+'> '+label+'</label>';
   const srcLine = by
     ? '来源分布：摘星 '+by['摘星']+' / 遵理 '+by['遵理']+' / 其他 '+by['其他']+' · 用时约 '+(meta.durationMin!=null?meta.durationMin+' 分钟':'—')
     : '这一批还没有自动抓取记录。双击文件夹里的「抓取DSE素材」跑一次，这里就会出现本轮的批次、条数和来源分布。';
   $('#panelBody').innerHTML =
-    '<div style="padding:12px">'+
+    '<div class="pad">'+
     '<div class="hint-box"><b>抓取已经做成桌面一键，不用再发给 TRAE 了。</b><br>'+
       '① 双击本文件夹里的「抓取DSE素材」→ ② 第一次用手机小红书扫码，之后一般不用再扫 → ③ 等窗口跑完再打开工作台，素材库会自动换成新的一批。<br>'+
       '只收最近 7 天的素人帖，已过滤「'+esc(au.exclude)+'」和招生类内容；搜索词在同目录「抓取关键词.txt」里改，一行一个。</div>'+
@@ -3410,16 +3587,16 @@ function renderAutoPanel(){
       '<div class="stat"><div class="k">当前批次</div><div class="v" style="font-size:14px">'+esc(sp.batch||'—')+'</div></div>'+
       '<div class="stat"><div class="k">素材条数</div><div class="v">'+sp.items.length+'</div></div>'+
       '<div class="stat"><div class="k">本轮新增</div><div class="v">'+(meta&&meta.added!=null?meta.added:'—')+'</div></div>'+
-      '<div class="stat"><div class="k">更新时间</div><div class="v" style="font-size:12.5px">'+esc(sp.updatedAt||'—')+'</div></div>'+
+      '<div class="stat"><div class="k">更新时间</div><div class="v" style="font-size:13px">'+esc(sp.updatedAt||'—')+'</div></div>'+
     '</div>'+
     '<div class="c-note" style="margin:-4px 0 12px;line-height:1.7">'+srcLine+'<br>本机计划任务：每周一 09:00 自动跑一次；没登录时会跳过并留日志，需要时手动双击扫码。</div>'+
     '<div class="kw-group"><h4>备用说明的频率 <span class="hint">只有下面的「复制备用说明」会用到</span></h4>'+
       '<div class="row wrap" style="margin-top:8px">'+
-        '<span style="font-size:12.5px;color:var(--txt-2)">每周</span>'+
+        '<span style="font-size:13px;color:var(--txt-2)">每周</span>'+
         '<select class="sel" id="auDow">'+DOW.map(d=>'<option value="'+d[0]+'"'+(au.dow===d[0]?' selected':'')+'>'+d[1]+'</option>').join('')+'</select>'+
         '<input class="inp" style="width:120px" type="time" id="auTime" value="'+esc(au.time)+'">'+
-        '<span style="font-size:12.5px;color:var(--txt-2);margin-left:6px">抓最近</span>'+
-        '<input class="inp" style="width:70px" type="number" id="auDays" value="'+esc(au.days)+'"> <span style="font-size:12.5px;color:var(--txt-2)">天</span>'+
+        '<span style="font-size:13px;color:var(--txt-2);margin-left:6px">抓最近</span>'+
+        '<input class="inp" style="width:70px" type="number" id="auDays" value="'+esc(au.days)+'"> <span style="font-size:13px;color:var(--txt-2)">天</span>'+
       '</div>'+
       '<div class="c-note" style="margin-top:8px">对应 cron：<b id="auCron">'+cronFor()+'</b></div>'+
     '</div>'+
@@ -3428,10 +3605,10 @@ function renderAutoPanel(){
     '</div>'+
     '<div class="kw-group"><h4>规则</h4>'+
       '<div class="row wrap" style="margin-top:8px">'+
-        '<span style="font-size:12.5px;color:var(--txt-2)">排除词</span><input class="inp" style="width:160px" id="auExclude" value="'+esc(au.exclude)+'">'+
-        '<span style="font-size:12.5px;color:var(--txt-2);margin-left:6px">目标条数</span><input class="inp" style="width:70px" type="number" id="auTarget" value="'+esc(au.target)+'">'+
+        '<span style="font-size:13px;color:var(--txt-2)">排除词</span><input class="inp" style="width:160px" id="auExclude" value="'+esc(au.exclude)+'">'+
+        '<span style="font-size:13px;color:var(--txt-2);margin-left:6px">目标条数</span><input class="inp" style="width:70px" type="number" id="auTarget" value="'+esc(au.target)+'">'+
       '</div>'+
-      '<div style="margin-top:8px"><label style="display:inline-flex;gap:6px;align-items:center;font-size:12.5px"><input type="checkbox" id="auGen"'+(au.genTopics?' checked':'')+'> 抓取后自动生成 20 个选题</label></div>'+
+      '<div style="margin-top:8px"><label style="display:inline-flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="auGen"'+(au.genTopics?' checked':'')+'> 抓取后自动生成 20 个选题</label></div>'+
     '</div>'+
     '<div class="row wrap">'+
       '<button class="btn primary" id="auRefresh">刷新状态</button>'+
@@ -3484,7 +3661,7 @@ function renderTeamPanel(){
       '</div></div>';
   }).join('');
   $('#panelBody').innerHTML =
-    '<div style="padding:12px">'+
+    '<div class="pad">'+
       '<div class="hint-box"><b>员工在员工版填一次，你在这里一键看全部。</b><br>'+
         '员工第一次只登记<b>账号名 + 主页链接 + 人设方向（摘星 / 遵理）</b>（固定，不用每天重填），之后每篇笔记只填：标题、文案、链接、日期、点赞、评论、<b>这篇带来多少客资</b>。<br>'+
         '员工用你录入的昵称登录员工版，填完就会<b>自动同步</b>到这里，不用发汇总码（离线版才需要导出/导入汇总码）。<br>'+
@@ -3500,7 +3677,7 @@ function renderTeamPanel(){
         '<div class="stat"><div class="k">总客资</div><div class="v">'+T.cx+'</div></div>'+
       '</div>'+
       '<div class="divider"></div>'+
-      '<h4 style="font-size:12.5px;margin:0 0 8px">每个员工的数据</h4>'+
+      '<h4 style="font-size:13px;margin:0 0 8px">每个员工的数据</h4>'+
       (cards || '<div class="empty-tip">还没有员工数据<br>员工用你录入的昵称登录员工版后，这里会自动出现<br>如果一直空着，让他先「＋ 登记账号」填昵称和主页链接</div>')+
       '<div class="c-note" style="margin-top:10px;line-height:1.9">飞书多维表格只是可选的备份/查看方式，不是必填流程；员工不需要登录飞书，也不需要再填一遍表单。</div>'+
     '</div>';
@@ -3535,7 +3712,7 @@ function openAccount(id){
     if(id){ Object.assign(state.accounts.find(x=>x.id===id), data); }
     else { const na = Object.assign({id:uid()}, data); state.accounts.push(na); state.currentId = na.id; }
     save(); closeModal(); renderAccounts(); renderMeta();
-    if(state.tab==='topic') renderTopics();
+    if(state.tab==='studio') renderTopics();
     toast('已保存');
   }});
   showModal(id?'编辑账号':'新建账号', body, btns);
@@ -3554,13 +3731,211 @@ function showModal(title, body, btns){
 function closeModal(){ $('#overlay').classList.remove('show'); }
 
 /* =========================================================
+   15.5 任务看板：把每个员工「今天这一篇」做成一张卡
+   ========================================================= */
+let boardEmpFilter = '全部';
+const BOARD_COLS = [
+  {k:'todo',    t:'待开始'},
+  {k:'doing',   t:'进行中'},
+  {k:'done',    t:'已完成'},
+  {k:'blocked', t:'阻塞'}
+];
+const BOARD_LABEL = {todo:'待开始', doing:'进行中', done:'已完成', blocked:'阻塞'};
+
+function boardData(){
+  const today = localDate();
+  const emps = listEmployees();
+  const cols = {todo:[], doing:[], done:[], blocked:[]};
+  const archive = [];
+  emps.forEach(e=>{
+    const a0 = (e.accounts||[])[0] || {};
+    const acct = a0.name || '未登记账号';
+    const base = {emp:e.name, acct:acct, avatar:String(e.name||'?').slice(0,1)};
+    const notes = (e.daily||[]).slice().sort((x,y)=> String((y||{}).date||'').localeCompare(String((x||{}).date||'')));
+    const todayNotes = notes.filter(x=> String((x||{}).date||'')===today);
+    notes.forEach(x=>{ if(String((x||{}).date||'')!==today) archive.push({emp:e.name, acct:(x&&x.acct)||acct, note:(x||{})}); });
+    if(todayNotes.length){
+      todayNotes.forEach(x=>{
+        x = x || {};
+        const views = +x.views || 0;
+        const st = !x.link ? 'blocked' : (views > 0 ? 'done' : 'doing');
+        const task = Object.assign({}, base, {
+          st:st, kind:'note', note:x, title:(x.title||'（没填标题）'),
+          views:views, like:+x.like||0, cmt:+x.cmt||0, cx:+x.cx||0, link:x.link||''
+        });
+        cols[st].push(task);
+      });
+    }else{
+      const dk = Object.keys(e.drafts||{});
+      if(dk.length){
+        const k = dk[dk.length-1], d = (e.drafts||{})[k] || {};
+        cols.doing.push(Object.assign({}, base, {st:'doing', kind:'draft', title:(d.title||k),
+          desc:'草稿写好了，今天还没上报', draft:d}));
+      }else{
+        cols.todo.push(Object.assign({}, base, {st:'todo', kind:'todo', title:'今天的笔记还没动',
+          desc: e.empty ? '还没同步到数据：让他用你名单里的昵称登录员工版' : '打开员工版挑选题 → 写完 → 上报'}));
+      }
+    }
+  });
+  cols.done.sort((x,y)=> y.views - x.views);
+  return {cols:cols, archive:archive, emps:emps};
+}
+function boardProgress(t){
+  if(t.st==='done') return 100;
+  if(t.st==='blocked') return 55;
+  if(t.kind==='draft') return 60;
+  if(t.st==='doing') return 80;
+  return 0;
+}
+function boardBarCls(t){
+  if(t.st==='done') return '';
+  if(t.st==='blocked') return 'r';
+  if(t.st==='doing' || t.kind==='draft') return 'a';
+  return 'g';
+}
+function boardDesc(t){
+  if(t.kind==='note'){
+    if(t.st==='blocked') return '已上报，但没填链接 —— 数据没法核实';
+    if(t.st==='doing') return '已发布，浏览量还没回填';
+    return '浏览 '+t.views+' · 赞 '+t.like+' · 评 '+t.cmt+' · 客资 '+t.cx;
+  }
+  return t.desc || '';
+}
+function boardCard(t, idx){
+  const pct = boardProgress(t);
+  return '<div class="task-card" data-i="'+idx+'">'+
+    '<div class="tc-top"><span class="tc-state s-'+t.st+'">'+BOARD_LABEL[t.st]+'</span>'+
+      '<span class="tc-acts"><button class="mini" data-view="'+idx+'">查看</button></span></div>'+
+    '<div class="tc-title">'+esc(t.title)+'</div>'+
+    '<div class="tc-desc">'+esc(boardDesc(t))+'</div>'+
+    '<div class="tc-bar '+boardBarCls(t)+'"><i style="width:'+pct+'%"></i></div>'+
+    '<div class="tc-pct">'+pct+'% 完成</div>'+
+    '<div class="tc-foot"><span class="av">'+esc(t.avatar)+'</span><b>'+esc(t.emp)+'</b>'+
+      '<span>'+esc(t.acct)+'</span><span style="margin-left:auto">今天</span></div>'+
+  '</div>';
+}
+function renderBoard(){
+  const d = boardData();
+  const emps = d.emps.map(e=>e.name);
+  const cur = (boardEmpFilter!=='全部' && emps.indexOf(boardEmpFilter)>=0) ? boardEmpFilter : '全部';
+  const all = [].concat(d.cols.todo, d.cols.doing, d.cols.done, d.cols.blocked);
+  const tasks = all.filter(t=> cur==='全部' || t.emp===cur);
+  const show = k => tasks.filter(t=> t.st===k);
+  const empChips = ['全部'].concat(emps).map(nm=>{
+    const c = nm==='全部' ? all.length : all.filter(t=>t.emp===nm).length;
+    return '<button class="chip'+(cur===nm?' active':'')+'" data-emp="'+esc(nm)+'">'+
+      (nm==='全部' ? '全部' : '<span class="av">'+esc(String(nm).slice(0,1))+'</span>'+esc(nm))+
+      '<span class="cnum">'+c+'</span></button>';
+  }).join('');
+  const cols = BOARD_COLS.map(c=>{
+    const list = show(c.k);
+    const cards = list.length ? list.map(t=> boardCard(t, tasks.indexOf(t))).join('')
+      : '<div class="bc-empty">暂无任务</div>';
+    return '<div class="board-col"><div class="bc-head"><h3>'+c.t+'</h3>'+
+      '<span class="bc-cnt">'+list.length+'</span></div>'+cards+'</div>';
+  }).join('');
+  const arc = d.archive.filter(x=> cur==='全部' || x.emp===cur);
+  const arcRows = arc.slice(0,30).map(x=>
+    '<div class="arc-row"><span class="arc-date">'+esc(x.note.date||'—')+'</span>'+
+      '<b>'+esc(x.emp)+'</b>'+
+      '<span class="arc-t">'+esc(x.note.title||'（没填标题）')+'</span>'+
+      '<span class="arc-num">浏览 '+esc(x.note.views||0)+'</span></div>').join('');
+  $('#panelBody').innerHTML =
+    '<div class="board-wrap">'+
+      '<div class="filters-bar">'+
+        '<span class="flabel">负责人</span>'+empChips+
+        '<span class="spacer"></span>'+
+        '<button class="btn sm" id="boardRefresh">🔄 刷新</button>'+
+      '</div>'+
+      '<div class="board" style="margin-top:18px">'+cols+'</div>'+
+      '<div class="archive">'+
+        '<div class="archive-hd"><h3>已归档任务</h3><span class="cnt">'+arc.length+'</span></div>'+
+        '<div class="archive-sub">今天以外的上报记录，按时间倒序，只显示最近 30 条。</div>'+
+        (arc.length ? '<div class="arc-list">'+arcRows+'</div>'
+          : '<div class="archive-box">暂无归档任务</div>')+
+      '</div>'+
+    '</div>';
+  const doneN = d.cols.done.length + d.cols.doing.filter(t=>t.kind==='note').length + d.cols.blocked.length;
+  const ps = $('#pageSub');
+  if(ps) ps.textContent = '今天已上报 '+doneN+' 篇 · 待开始 '+d.cols.todo.length+' 人 · 进行中 '+d.cols.doing.length+' · 阻塞 '+d.cols.blocked.length;
+  $$('#panelBody .chip[data-emp]').forEach(b=> b.onclick = ()=>{ boardEmpFilter = b.dataset.emp; renderBoard(); });
+  $$('#panelBody .task-card').forEach(el=>{
+    el.onclick = ()=> openBoardTask(tasks[+el.dataset.i]);
+  });
+  const rf = $('#boardRefresh'); if(rf) rf.onclick = ()=>{ renderBoard(); toast('看板已刷新'); };
+}
+function openBoardTask(t){
+  if(!t) return;
+  const n = t.note || t.draft || {};
+  const head = t.kind==='note'
+    ? '<div class="hint-box">这是今天已经上报的笔记，数据由员工在员工版填写。</div>'
+    : t.kind==='draft'
+      ? '<div class="hint-box">这篇还停在草稿，员工今天还没上报。</div>'
+      : '<div class="hint-box">这个人今天还没开始，提醒他打开员工版挑选题。</div>';
+  let body = head +
+    '<div class="field"><label>员工 / 账号</label><div class="kv">'+esc(t.emp)+' · '+esc(t.acct)+'</div></div>'+
+    '<div class="field"><label>标题</label><div class="kv">'+esc(t.title)+'</div></div>';
+  if(t.kind==='note'){
+    body += '<div class="stat-grid">'+
+      '<div class="stat"><div class="k">浏览量</div><div class="v">'+(t.views||0)+'</div></div>'+
+      '<div class="stat"><div class="k">点赞</div><div class="v">'+(t.like||0)+'</div></div>'+
+      '<div class="stat"><div class="k">评论</div><div class="v">'+(t.cmt||0)+'</div></div>'+
+      '<div class="stat"><div class="k">客资</div><div class="v">'+(t.cx||0)+'</div></div>'+
+    '</div>'+
+      (t.link ? '<a class="link-btn hot" href="'+esc(normLink(t.link))+'" target="_blank" rel="noopener">打开这篇笔记 ↗</a>'
+              : '<div class="c-note" style="color:#B25E00">员工没填链接，没法点开核对。</div>');
+  }
+  const txt = (n.body || '');
+  if(txt) body += '<div class="field" style="margin-top:14px"><label>正文</label>'+
+    '<textarea class="inp" rows="8" readonly>'+esc(txt)+'</textarea></div>';
+  const btns = [{t:'关闭', fn:closeModal}];
+  if(txt) btns.push({t:'复制正文', fn:()=> copyText(txt)});
+  showModal(BOARD_LABEL[t.st]+' · '+t.emp, body, btns);
+}
+
+/* =========================================================
    16. Tab 切换 & 初始化
    ========================================================= */
+const PAGE_META = {
+  board:   {crumb:'任务工作区', title:'任务看板', sub:'把今天每个人要发的笔记排好，一眼看到谁发了、谁还没动。'},
+  studio:  {crumb:'内容生产', title:'选题与写帖', sub:'左边挑选题，右边一键生成、自检、复制。'},
+  pool:    {crumb:'内容素材', title:'素材池', sub:'每周同步下来的爆款参考，从这里生成选题。'},
+  kw:      {crumb:'内容素材', title:'关键词库', sub:'持续补词，让每一篇都有人搜得到。'},
+  material:{crumb:'内容素材', title:'素材文件', sub:'本机素材文件与批次信息。'},
+  review:  {crumb:'数据', title:'数据回顾', sub:'今天发了多少、跑了多少，一眼看清。'},
+  daily:   {crumb:'数据', title:'全员笔记', sub:'员工上报的每一篇笔记，只给主管看。'},
+  lead:    {crumb:'数据', title:'客资统计', sub:'谁带来了客资、谁需要帮一把。'},
+  team:    {crumb:'团队', title:'团队日报', sub:'今天每个人做了什么、进度到哪。'},
+  admin:   {crumb:'团队', title:'主管后台', sub:'员工明细、同步码、备份，都在这里。'},
+  auto:    {crumb:'其他', title:'自动化', sub:'每周自动跑一次，省掉重复动作。'}
+};
+function setHeadAction(name){
+  const btn = $('#headAction'); if(!btn) return;
+  const conf = {
+    board:  {t:'＋ 新建账号', fn:()=> openAccount(null)},
+    studio: {t:'⚡ 生成 20 条选题', fn:genTopics},
+    pool:   {t:'＋ 导入素材', fn:openImport}
+  }[name];
+  if(!conf){ btn.hidden = true; return; }
+  btn.hidden = false; btn.textContent = conf.t; btn.onclick = conf.fn;
+}
 function switchTab(name){
+  if(name==='topic') name = 'studio';
   state.tab = name;
   $$('#tabs .tab').forEach(t=> t.classList.toggle('active', t.dataset.tab===name));
-  if(name==='pool') renderPoolPanel();
-  else if(name==='topic') renderTopics();
+  const m = PAGE_META[name] || PAGE_META.board;
+  const cr = $('#pageCrumb'), ti = $('#pageTitle'), ps = $('#pageSub');
+  if(cr) cr.textContent = m.crumb;
+  if(ti) ti.textContent = m.title;
+  if(ps) ps.textContent = m.sub;
+  const hasEditor = (name==='studio');
+  const pane = $('#editPane'); if(pane) pane.hidden = !hasEditor;
+  const ws = $('#workspace'); if(ws) ws.classList.toggle('with-editor', hasEditor);
+  const wrap = $('#panelWrap'); if(wrap) wrap.classList.toggle('plain', name==='board');
+  setHeadAction(name);
+  if(name==='board') renderBoard();
+  else if(name==='studio') renderTopics();
+  else if(name==='pool') renderPoolPanel();
   else if(name==='kw') renderKwPanel();
   else if(name==='material') renderMaterialPanel();
   else if(name==='review') renderReviewPanel();
@@ -3569,21 +3944,24 @@ function switchTab(name){
   else if(name==='team') renderTeamPanel();
   else if(name==='admin') renderAdminPanel();
   else if(name==='auto') renderAutoPanel();
+  if(hasEditor){
+    if(state.activeTopic) renderTopicPreview(state.activeTopic);
+    else resetEditor('先选一个选题');
+  }
 }
 function init(){
   renderWho();
   const isAdmin = SESSION.role==='admin';
-  $('#tabAdmin').style.display = isAdmin?'':'none';
-  $('#tabTeam').style.display = isAdmin?'':'none';
-  $('#tabLead').style.display = isAdmin?'':'none';
-  $('#tabReview').style.display = isAdmin?'':'none';
-  $('#tabDaily').style.display = '';
-  renderAccounts(); renderMeta(); switchTab(isAdmin?'admin':'pool');
+  const hideTab = (id, on)=>{ const el = document.getElementById(id); if(el) el.style.display = on?'':'none'; };
+  hideTab('tabAdmin', isAdmin); hideTab('tabTeam', isAdmin);
+  hideTab('tabLead', isAdmin); hideTab('tabReview', isAdmin);
+  renderAccounts(); renderMeta();
   $$('#tabs .tab').forEach(t=> t.onclick = ()=> switchTab(t.dataset.tab));
-  $('#btnNewAcct').onclick = ()=> openAccount(null);
-  $('#btnRegen').onclick = ()=>{ if(state.activeTopic){ openEditor(state.activeTopic); toast('已重新生成'); } };
-  $('#overlay').onclick = e=>{ if(e.target.id==='overlay') closeModal(); };
+  const nb = $('#btnNewAcct'); if(nb) nb.onclick = ()=> openAccount(null);
+  const rg = $('#btnRegen'); if(rg) rg.onclick = ()=>{ if(state.activeTopic){ openEditor(state.activeTopic); toast('已重新生成'); } };
+  const ov = $('#overlay'); if(ov) ov.onclick = e=>{ if(e.target.id==='overlay') closeModal(); };
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+  switchTab(isAdmin ? 'board' : 'pool');
 }
 
 /* =========================================================
@@ -3683,7 +4061,7 @@ function renderDailyPanel(){
           (per?'<span class="tag src-'+esc(per)+'">'+esc(per)+'</span>':'')+
           '<span class="tag">'+esc(x.date)+'</span>'+
         '</div>'+
-        '<div style="font-size:11.5px;color:#8a8f99;margin-top:4px">'+
+        '<div style="font-size:13px;color:#8a8f99;margin-top:4px">'+
           '账号：'+esc(x.acct||'—')+(x.acctLink?' <a href="'+esc(normLink(x.acctLink))+'" target="_blank" rel="noopener">主页↗</a>':'')+
           ' · 浏览 '+(x.views||0)+' · 赞 '+(x.like||0)+' · 评 '+(x.cmt||0)+
           ' · <b style="color:#c2410c">客资 '+(x.cx||0)+'</b>'+
@@ -3696,7 +4074,7 @@ function renderDailyPanel(){
     });
   });
   $('#panelBody').innerHTML =
-    '<div style="padding:12px">'+
+    '<div class="pad">'+
       '<div class="hint-box"><b>这里是全员的笔记数据，只用来给你看和分析。</b><br>'+
         '员工用你录入的昵称登录员工版、上报之后，数据会<b>自动同步</b>到这里：每个员工每篇笔记的<b>账号、主页、链接、标题、文案、点赞、评论、客资</b>都会出现（离线版才需要导汇总码）。<br>'+
         '员工只上报数据，分析和备注由你写，不会同步给员工。</div>'+
@@ -3714,7 +4092,7 @@ function renderDailyPanel(){
         '<div class="stat"><div class="k">总点赞 / 评论</div><div class="v" style="font-size:14px">'+T.like+' / '+T.cmt+'</div></div>'+
       '</div>'+
       '<div class="divider"></div>'+
-      '<h4 style="font-size:12.5px;margin:0 0 8px">全员笔记明细 <span style="font-size:11px;color:#999">'+(curEmp==='全部'?'（一篇一块，点上面的名字只看他一个人的）':'（只看 '+esc(curEmp)+' 的笔记）')+'</span></h4>'+
+      '<h4 style="font-size:13px;margin:0 0 8px">全员笔记明细 <span style="font-size:12px;color:#999">'+(curEmp==='全部'?'（一篇一块，点上面的名字只看他一个人的）':'（只看 '+esc(curEmp)+' 的笔记）')+'</span></h4>'+
       (rows.length
         ? rows.join('')
         : '<div class="empty-tip">还没有员工数据<br>员工用你录入的昵称登录员工版、上报后这里会自动出现（不用发汇总码）</div>')+
@@ -3859,7 +4237,7 @@ function adminEmpCard(e){
   const df = Object.keys(e.drafts||{}).slice(0,4).map(k=>{
     const d = e.drafts[k]||{};
     return '<details style="margin-top:4px"><summary style="cursor:pointer;font-weight:600">'+esc(d.title||k)+'</summary>'+
-      '<div style="white-space:pre-wrap;font-size:11.5px;color:var(--txt-2);line-height:1.75;margin-top:5px;padding:8px 10px;background:#fafbfc;border:1px solid var(--line);border-radius:8px">'+esc((d.body||'').slice(0,600))+'</div></details>';
+      '<div style="white-space:pre-wrap;font-size:13px;color:var(--txt-2);line-height:1.75;margin-top:5px;padding:8px 10px;background:#fafbfc;border:1px solid var(--line);border-radius:8px">'+esc((d.body||'').slice(0,600))+'</div></details>';
   }).join('');
   return '<div class="adm-emp">'+
     '<div class="hd"><span class="nm">'+esc(e.name)+'</span>'+
@@ -3921,7 +4299,7 @@ function renderAdminPanel(){
   const emps = listEmployees();
   const T = emps.reduce((a,e)=>{ a.per+=e.accounts.length; a.topics+=e.topics.length; a.drafts+=e.draftCount; a.daily+=e.daily.length; a.cx+=e.cx; a.like+=e.like; a.views+=e.views; return a; }, {per:0,topics:0,drafts:0,daily:0,cx:0,like:0,views:0});
   $('#panelBody').innerHTML =
-    '<div style="padding:12px">'+
+    '<div class="pad">'+
       renderRosterCard()+
       '<div class="hint-box"><b>主管后台</b>：员工在<b>员工版</b>登记一次账号（昵称 + 主页链接 + 人设方向 摘星/遵理），之后每篇笔记填标题、文案、链接、日期、点赞、评论、<b>这篇带来多少客资</b>。<br>员工填完点右上角「导出汇总码」发给你 → 你点下面「导入员工汇总码」→ 这里就能看到每个员工的账号、每篇笔记和客资。<br>员工不需要登录飞书、也不需要再填一遍表单；复盘和分析由你在「复盘 / 全员笔记」里做。</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'+
@@ -3941,7 +4319,7 @@ function renderAdminPanel(){
         '<div class="stat"><div class="k">人设 / 选题</div><div class="v" style="font-size:14px">'+T.per+' / '+T.topics+'</div></div>'+
       '</div>'+
       '<div class="divider"></div>'+
-      '<h4 style="font-size:12.5px;margin:0 0 8px">员工工作台明细</h4>'+
+      '<h4 style="font-size:13px;margin:0 0 8px">员工工作台明细</h4>'+
       (emps.length? emps.map(adminEmpCard).join('') : '<div class="empty-tip">还没有员工数据<br>让员工在员工版点「导出汇总码」发给你，再点上面「导入员工汇总码」</div>')+
     '</div>';
   $('#admBackupBtn').onclick = openBackupModal;
