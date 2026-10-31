@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="cloud.js?v=2"></script>
+<link rel="stylesheet" href="theme.css?v=7">
 <title>DSE 矩阵选题工作台</title>
 <style>
   :root{
@@ -296,7 +297,7 @@
         <button class="tab" data-tab="topic">选题库<span class="cnt" id="tabTopicCnt">0</span></button>
         <button class="tab" data-tab="kw">关键词库</button>
         <button class="tab" data-tab="material">素材库</button>
-        <button class="tab" data-tab="review" id="tabReview">复盘（日/周）</button>
+        <button class="tab" data-tab="review" id="tabReview">数据回顾</button>
         <button class="tab" data-tab="daily" id="tabDaily">全员笔记</button>
         <button class="tab" data-tab="lead" id="tabLead">客资统计</button>
         <button class="tab" data-tab="team" id="tabTeam">团队日报</button>
@@ -3007,16 +3008,16 @@ function renderReviewPanel(){
 
   $('#panelBody').innerHTML =
     '<div style="padding:12px">'+
-      '<div class="hint-box"><b>复盘只给主管看，员工那边没有复盘。</b>员工用你录入的昵称登录员工版后，上报的数据<b>几秒内自动同步到这里，不用发汇总码</b>；离线版仍可用「导入员工汇总码」。<br>'+
-        '下面先是你<b>今天的实时复盘</b>，再是<b>最近 7 天按天分块的周复盘</b>；点「一键汇总本周」把所有数据合成一段，直接发给团队或贴到飞书。</div>'+
+      '<div class="hint-box"><b>这里的数据只给主管看，员工那边看不到。</b>员工用你录入的昵称登录员工版后，上报的数据<b>几秒内自动同步到这里，不用发汇总码</b>。<br>'+
+        '上面是<b>今天的数据</b>，下面是<b>最近 7 天按天分块的本周数据</b>；点「一键汇总本周」合成一段，直接发团队或贴到飞书。</div>'+
       personaChips()+
       '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'+
-        '<button class="btn" id="rvRefresh">🔄 刷新复盘</button>'+
+        '<button class="btn" id="rvRefresh">🔄 刷新数据</button>'+
         '<button class="btn primary" id="rvAgg">📋 一键汇总本周</button>'+
-        '<button class="btn ghost" id="rvCsv">导出本周复盘（CSV）</button>'+
+        '<button class="btn ghost" id="rvCsv">导出本周数据（CSV）</button>'+
         '<button class="btn ghost" id="rvImport">📥 导入员工汇总码</button>'+
       '</div>'+
-      '<h4 style="font-size:12.5px;margin:0 0 8px">今日实时复盘 · '+esc(today)+' '+esc(weekdayOf(today))+'</h4>'+
+      '<h4 style="font-size:12.5px;margin:0 0 8px">今日数据 · '+esc(today)+' '+esc(weekdayOf(today))+'</h4>'+
       '<div class="stat-grid">'+
         '<div class="stat"><div class="k">今日笔记</div><div class="v">'+T.n+'</div></div>'+
         '<div class="stat"><div class="k">今日客资</div><div class="v">'+T.cx+'</div></div>'+
@@ -3029,7 +3030,7 @@ function renderReviewPanel(){
         (missing.length?'<div class="c-note" style="color:#b25e00">今天还没上报：'+esc(missing.join('、'))+'</div>':'')+
         '<div style="margin-top:6px"><b>今日新增客资：</b></div>'+tCxHtml+'</div></div>'+
       '<div class="divider"></div>'+
-      '<h4 style="font-size:12.5px;margin:0 0 8px">本周复盘 · '+esc(weekFrom.slice(5))+' ~ '+esc(today.slice(5))+' <span style="font-size:11px;color:#999">（按天分块，每天一块）</span></h4>'+
+      '<h4 style="font-size:12.5px;margin:0 0 8px">本周数据 · '+esc(weekFrom.slice(5))+' ~ '+esc(today.slice(5))+' <span style="font-size:11px;color:#999">（按天分块，每天一块）</span></h4>'+
       '<div class="stat-grid">'+
         '<div class="stat"><div class="k">本周笔记</div><div class="v">'+W.n+'</div></div>'+
         '<div class="stat"><div class="k">本周客资</div><div class="v">'+W.cx+'</div></div>'+
@@ -3048,11 +3049,11 @@ function renderReviewPanel(){
     '</div>';
 
   bindPersonaChips(renderReviewPanel);
-  $('#rvRefresh').onclick = ()=>{ renderReviewPanel(); toast('复盘已刷新'); };
+  $('#rvRefresh').onclick = ()=>{ renderReviewPanel(); toast('已刷新'); };
   $('#rvImport').onclick = openImportEmpCode;
   $('#rvAgg').onclick = ()=>{
     const txt = buildWeekSummary();
-    showModal('本周复盘汇总（可复制）',
+    showModal('本周数据汇总（可复制）',
       '<div class="hint-box">已经把所有员工、每一天的数据合成一段，直接复制发群或贴进飞书多维表格。</div>'+
       '<textarea class="inp" id="rvSum" rows="16" readonly style="font:12px/1.8 Consolas,monospace">'+esc(txt)+'</textarea>',
       [{t:'关闭', fn:closeModal},
@@ -3068,7 +3069,7 @@ function buildWeekSummary(){
   const WK=cxSplit(cxRows);
   const pf=personaFilterOf();
   const lines=[];
-  lines.push('DSE 矩阵复盘 · '+from+' ~ '+today+(pf!=='全部'?'（人设：'+pf+'）':''));
+  lines.push('DSE 矩阵数据 · '+from+' ~ '+today+(pf!=='全部'?'（人设：'+pf+'）':''));
   lines.push('本周合计：笔记 '+W.n+' · 浏览 '+W.views+' · 客资 '+W.cx+'（家长 '+WK.p+' / 其他人 '+WK.oth+' / 未标注 '+WK.u+'）· 点赞 '+W.like+' · 评论 '+W.cmt);
   for(let i=0;i<7;i++){
     const ds=shiftDate(today,-i);
@@ -3101,8 +3102,8 @@ function exportWeekCsv(){
       +x.views||0, +x.like||0, +x.cmt||0, +x.cx||0, +m.parent||0, +m.other||0, m.src||'', m.note||'',
       analysis[r.emp.ns+'|'+x.id]||''];
   });
-  downloadCsv('DSE复盘_'+from+'~'+today+'.csv', head, body);
-  toast('已导出本周复盘 CSV（可直接导入飞书多维表格）');
+  downloadCsv('DSE数据_'+from+'~'+today+'.csv', head, body);
+  toast('已导出本周数据 CSV（可直接导入飞书多维表格）');
 }
 
 /* =========================================================
@@ -3652,13 +3653,23 @@ function dailyText(x){
 /* 主管自己的分析笔记（只存在主管本机，不会发给员工） */
 function admAnalysis(){ try{ return JSON.parse(localStorage.getItem('dse_admin_analysis_v2')||'{}'); }catch(e){ return {}; } }
 function saveAdmAnalysis(o){ try{ localStorage.setItem('dse_admin_analysis_v2', JSON.stringify(o)); }catch(e){} }
+/* 全员笔记：按员工筛选（点一下只看这个人的笔记） */
+let dailyEmpFilter = '全部';
 function renderDailyPanel(){
   const emps = listEmployees();
+  const empNames = emps.map(e=>e.name);
+  const curEmp = (dailyEmpFilter!=='全部' && empNames.indexOf(dailyEmpFilter)>=0) ? dailyEmpFilter : '全部';
+  const empChips = '<div class="filters" style="border:none;padding:0 0 10px">'+
+    ['全部'].concat(empNames).map(nm=>{
+      const cnt = nm==='全部' ? (emps.reduce((a,e)=>a+(e.daily||[]).length,0)) : ((emps.find(e=>e.name===nm)||{daily:[]}).daily||[]).length;
+      return '<button class="chip'+(curEmp===nm?' active':'')+'" data-emp="'+esc(nm)+'">'+esc(nm)+'<span class="cnt" style="margin-left:4px;opacity:.6">'+cnt+'</span></button>';
+    }).join('')+'</div>';
   const analysis = admAnalysis();
   const notes = {};
   const rows = [];
   const T = {n:0, cx:0, like:0, cmt:0, views:0};
   emps.forEach(e=>{
+    if(curEmp!=='全部' && e.name!==curEmp) return;
     (e.daily||[]).forEach(x=>{
       if(!matchPersona(e,x)) return;
       T.n++; T.cx += +x.cx||0; T.like += +x.like||0; T.cmt += +x.cmt||0; T.views += +x.views||0;
@@ -3688,7 +3699,8 @@ function renderDailyPanel(){
     '<div style="padding:12px">'+
       '<div class="hint-box"><b>这里是全员的笔记数据，只用来给你看和分析。</b><br>'+
         '员工用你录入的昵称登录员工版、上报之后，数据会<b>自动同步</b>到这里：每个员工每篇笔记的<b>账号、主页、链接、标题、文案、点赞、评论、客资</b>都会出现（离线版才需要导汇总码）。<br>'+
-        '员工只上报数据，复盘/分析由你在这张表最后一列写，不会同步给员工。</div>'+
+        '员工只上报数据，分析和备注由你写，不会同步给员工。</div>'+
+      empChips+
       personaChips()+
       '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'+
         '<button class="btn primary" id="dpImport">📥 导入员工汇总码</button>'+
@@ -3702,12 +3714,13 @@ function renderDailyPanel(){
         '<div class="stat"><div class="k">总点赞 / 评论</div><div class="v" style="font-size:14px">'+T.like+' / '+T.cmt+'</div></div>'+
       '</div>'+
       '<div class="divider"></div>'+
-      '<h4 style="font-size:12.5px;margin:0 0 8px">全员笔记明细 <span style="font-size:11px;color:#999">（一篇一块，看客资）</span></h4>'+
+      '<h4 style="font-size:12.5px;margin:0 0 8px">全员笔记明细 <span style="font-size:11px;color:#999">'+(curEmp==='全部'?'（一篇一块，点上面的名字只看他一个人的）':'（只看 '+esc(curEmp)+' 的笔记）')+'</span></h4>'+
       (rows.length
         ? rows.join('')
         : '<div class="empty-tip">还没有员工数据<br>员工用你录入的昵称登录员工版、上报后这里会自动出现（不用发汇总码）</div>')+
     '</div>';
   bindPersonaChips(renderDailyPanel);
+  $$('#panelBody .chip[data-emp]').forEach(b=> b.onclick=()=>{ dailyEmpFilter = b.dataset.emp; renderDailyPanel(); });
   const impBtn = $('#dpImport'); if(impBtn) impBtn.onclick = openImportEmpCode;
   const rf = $('#dpRefresh'); if(rf) rf.onclick = ()=>{ renderDailyPanel(); toast('已刷新'); };
   const ex = $('#dpExport');

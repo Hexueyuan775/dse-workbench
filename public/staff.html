@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="cloud.js?v=2"></script>
+<link rel="stylesheet" href="theme.css?v=7">
 <title>DSE 内容工作台 · 员工版</title>
 <style>
   :root{
@@ -181,6 +182,9 @@
   .verdict.warn{background:var(--amber-soft);color:#b45309;}
   .verdict.bad{background:var(--accent-soft);color:#d81e3f;}
   .taglist{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+
+/* ===== 界面主题（与网页版同一套，2026-10-30） ===== */
+
 </style>
 </head>
 <body>
@@ -354,21 +358,34 @@ function latestPool(n){
   }).slice(0,n);
 }
 function firstOpenTopic(){ return (state.topics||[]).find(t=>t.status!=='done') || null; }
+/* 今日勾选：按日期隔离，过了 0 点自动清空 —— 这样「今日任务」每天都是新的 */
+function todayChecks(){
+  if(!state.check || typeof state.check!=='object') state.check = {date:todayStr(), done:{}};
+  if(state.check.date !== todayStr()){ state.check = {date:todayStr(), done:{}}; save(); }
+  if(!state.check.done) state.check.done = {};
+  return state.check.done;
+}
+/* 每天要做的 3 件事（会随日期自动重置） */
 function taskList(){
+  const dn = todayChecks();
+  const rep = reportedToday();
+  const wroteToday = state.lastWrite === todayStr() || (state.daily||[]).some(x=>x.date===todayStr());
+  return [
+    {id:'t3', t:'看 2—3 条参考素材找感觉', d: state.pool.length ? ('素材库已同步 '+state.pool.length+' 条，推荐在下方') : '素材库还是空的，先等主管发同步码', done: !!dn.t3, auto:false},
+    {id:'t4', t:'挑 1 条选题，写好一篇', d: wroteToday ? '今天已经动过笔了，可以继续写下一篇' : '去「我的选题」点一条 → 一键生成帖子', done: wroteToday, auto:true},
+    {id:'t5', t:'发布后上报这一篇的数据', d: rep ? '今天已上报 ✓' : '到「每日上报」填：标题、链接、浏览量、点赞、评论、客资', done: rep, auto:true}
+  ];
+}
+/* 一次性设置：做完就一直是已完成，不占今日进度 */
+function setupTasks(){
   const synced = state.pool.length>0;
   const hasTopics = (state.topics||[]).length>0;
-  const wrote = (state.topics||[]).some(t=>t.status==='done');
-  const rep = reportedToday();
-  const dn = state.check.done||{};
   const accts = state.accounts||[];
   const acctOk = accts.length>0 && accts.every(a=>a.link);
   return [
-    {id:'t0', t:'登记账号（昵称 + 主页链接，填一次固定）', d: accts.length ? ((acctOk?'已登记：':'缺主页链接：')+accts.map(a=>a.name).join('、')) : '去「我的选题」点「＋ 登记账号」，填昵称和主页链接', done: acctOk, auto:true},
-    {id:'t1', t:'确认本周素材已同步', d: synced ? ('批次 '+state.batch+' · 共 '+state.pool.length+' 条') : '等主管发同步码 → 去「素材库」粘贴一次', done: synced, auto:true},
-    {id:'t2', t:'为每个人设生成 20 条选题', d: hasTopics ? ('已生成 '+state.topics.length+' 条，去「我的选题」看') : '在「我的选题」先登记账号 → 点「⚡ 为每个人设生成 20 条选题」', done: hasTopics, auto:true},
-    {id:'t3', t:'看 2—3 条参考素材找感觉', d: state.pool.length ? '今天推荐的已列在下方' : '素材库还是空的', done: !!dn.t3, auto:false},
-    {id:'t4', t:'挑 1 条选题 → 一键生成帖子', d: wrote ? '已生成过，可继续写下一篇' : (hasTopics ? '在「我的选题」点一条 → 开始写帖' : '还没有选题，先做上面第 3 步'), done: wrote, auto:true},
-    {id:'t5', t:'发布后上报这一篇的数据', d: rep ? '今天已上报 ✓' : '到「每日上报」填：标题、文案、链接、日期、点赞、评论、客资', done: rep, auto:true}
+    {id:'t0', t:'登记账号（昵称 + 主页链接，填一次固定）', d: accts.length ? ((acctOk?'已登记：':'缺主页链接：')+accts.map(a=>a.name).join('、')) : '去「我的选题」点「＋ 登记账号」', done: acctOk},
+    {id:'t1', t:'确认本周素材已同步', d: synced ? ('批次 '+state.batch+' · 共 '+state.pool.length+' 条') : '等主管发同步码 → 去「素材库」粘贴一次', done: synced},
+    {id:'t2', t:'为每个人设生成 20 条选题', d: hasTopics ? ('已生成 '+state.topics.length+' 条，去「我的选题」看') : '在「我的选题」先登记账号 → 点「⚡ 为每个人设生成 20 条选题」', done: hasTopics}
   ];
 }
 function refCard(it){
@@ -379,13 +396,15 @@ function refCard(it){
 }
 function renderToday(){
   const tasks = taskList();
+  const setup = setupTasks();
   const doneN = tasks.filter(t=>t.done).length;
+  const setupDone = setup.filter(t=>t.done).length;
   const rec = latestPool(3);
   const tp = firstOpenTopic();
   const synced = state.pool.length>0;
   let html = '';
   html += '<div class="hint-box">'+(synced
-    ? '本周素材已同步（批次 <b>'+esc(state.batch)+'</b>，更新于 '+fmtTs(state.syncedAt)+'）。照着下面 '+tasks.length+' 步做就行。'
+    ? '本周素材已同步（批次 <b>'+esc(state.batch)+'</b>，更新于 '+fmtTs(state.syncedAt)+'）。今天要做的事在下面，每天自动刷新。'
     : '还没有素材库。等主管发来<b>同步码</b>，到「素材库」粘贴一次，这里就会自动生成今天的任务。')+'</div>';
   html += '<div class="stat-grid">'+
     '<div class="stat"><div class="k">今日进度</div><div class="v">'+doneN+'/'+tasks.length+'</div></div>'+
@@ -393,12 +412,17 @@ function renderToday(){
     '<div class="stat"><div class="k">我的选题</div><div class="v">'+state.topics.length+'</div></div>'+
     '<div class="stat"><div class="k">今日已上报</div><div class="v">'+(reportedToday()?'是':'否')+'</div></div>'+
   '</div>';
-  html += '<h4 class="sec">今天照着做</h4>';
+  html += '<div class="sec-row"><h4 class="sec">今日任务</h4><button class="btn sm ghost" id="todayReset">🔄 刷新今日</button></div>';
   html += tasks.map(t=>{
     const box = t.auto
       ? '<span class="box"><span class="tag '+(t.done?'ok':'wait')+'">'+(t.done?'已完成':'待完成')+'</span></span>'
       : '<input type="checkbox" data-task="'+t.id+'"'+(t.done?' checked':'')+'>';
     return '<label class="chk'+(t.done?' done':'')+'">'+box+'<span><span class="chk-t">'+esc(t.t)+'</span><span class="chk-d">'+esc(t.d)+'</span></span></label>';
+  }).join('');
+  html += '<div class="sec-row"><h4 class="sec">开始前的一次性设置</h4><span class="sub">已完成 '+setupDone+'/'+setup.length+'</span></div>';
+  html += setup.map(t=>{
+    return '<label class="chk setup'+(t.done?' done':'')+'"><span class="box"><span class="tag '+(t.done?'ok':'wait')+'">'+(t.done?'已就位':'待设置')+'</span></span>'+
+      '<span><span class="chk-t">'+esc(t.t)+'</span><span class="chk-d">'+esc(t.d)+'</span></span></label>';
   }).join('');
   html += '<h4 class="sec">今日参考素材</h4>';
   html += rec.length ? rec.map(refCard).join('') : '<div class="empty-tip">同步素材库后，这里会推荐 3 条参考</div>';
@@ -409,8 +433,13 @@ function renderToday(){
   $('#panelBody').innerHTML = html;
 
   $$('#panelBody [data-task]').forEach(el=> el.onchange=()=>{
-    state.check.date = todayStr(); state.check.done[el.dataset.task] = el.checked; save(); renderToday();
+    const dn = todayChecks(); dn[el.dataset.task] = el.checked; save(); renderToday();
   });
+  const rst = $('#todayReset');
+  if(rst) rst.onclick = ()=>{
+    state.check = {date: todayStr(), done:{}}; save(); renderToday();
+    toast('今日任务已刷新（手动勾选的重新开始，数据类按实际情况自动判断）');
+  };
   const gt = $('#goTopic'); if(gt) gt.onclick = e=>{ e.preventDefault(); switchTab('topic'); };
 }
 
@@ -768,6 +797,7 @@ function saveDraft(){
   if($('#pBody')) EDITOR_BODIES[EDITOR_MODE] = $('#pBody').value;
   state.drafts[t.title||title] = {title, body:EDITOR_BODIES.xhs, wxBody:EDITOR_BODIES.wx, tags:$('#pTags').value,
     link:($('#pLink')?($('#pLink').value||'').trim():''), kw:t.kw||'', cat:t.cat||'', acct:acctName};
+  state.lastWrite = todayStr();
   save(); toast('草稿已保存（含小红书版和公众号版）');
 }
 /* 提交：把标题、文案、链接记入上报，等发布后回来补数据 */
@@ -783,6 +813,7 @@ function submitPost(){
     acct:a.name||SESSION.name, acctLink:a.link||'', topic:t.title});
   const my = state.topics.find(x=>x.title===t.title); if(my) my.status='done';
   state.daily[0].persona = a.persona || '';
+  state.lastWrite = todayStr();
   save();
   copyText(title+'\n\n'+body+'\n\n'+tags);
   closeModal();
@@ -845,7 +876,7 @@ function renderDaily(){
           '<td><input class="mini" style="width:44px" type="number" value="'+(x.like||0)+'" data-daily="'+x.id+'" data-f="like"></td>'+
           '<td><input class="mini" style="width:44px" type="number" value="'+(x.cmt||0)+'" data-daily="'+x.id+'" data-f="cmt"></td>'+
           '<td><input class="mini" style="width:44px" type="number" value="'+(x.cx||0)+'" data-daily="'+x.id+'" data-f="cx"></td>'+
-          '<td><button class="mini" data-viewbody="'+x.id+'">看文案</button> <button class="mini" data-copyrep="'+x.id+'">复制</button> <button class="mini" data-deldaily="'+x.id+'">删</button></td></tr>').join('')+
+          '<td><button class="mini" data-editdaily="'+x.id+'">编辑</button> <button class="mini" data-viewbody="'+x.id+'">看文案</button> <button class="mini" data-copyrep="'+x.id+'">复制</button> <button class="mini" data-deldaily="'+x.id+'">删</button></td></tr>').join('')+
         '</tbody></table></div>'+
         '<div style="margin-top:8px;display:flex;gap:8px"><button class="btn sm" id="dCopyAll">复制全部上报</button><button class="btn sm ghost" id="dClear">清空</button></div>'
       : '<div class="empty-tip">还没有上报记录<br>上面填一篇试试</div>');
@@ -868,6 +899,7 @@ function renderDaily(){
   $$('#panelBody [data-daily]').forEach(el=> el.onchange=()=>{ const it=state.daily.find(x=>x.id===el.dataset.daily); if(it){ it[el.dataset.f]=+el.value||0; save(); } });
   $$('#panelBody [data-deldaily]').forEach(el=> el.onclick=()=>{ state.daily=state.daily.filter(x=>x.id!==el.dataset.deldaily); save(); renderDaily(); });
   $$('#panelBody [data-copyrep]').forEach(el=> el.onclick=()=>{ const it=state.daily.find(x=>x.id===el.dataset.copyrep); if(it) copyText(dailyText(it)); });
+  $$('#panelBody [data-editdaily]').forEach(el=> el.onclick=()=> openDailyEdit(el.dataset.editdaily));
   $$('#panelBody [data-viewbody]').forEach(el=> el.onclick=()=>{
     const it=state.daily.find(x=>x.id===el.dataset.viewbody); if(!it) return;
     showModal('这篇的文案 · '+esc(it.title),
@@ -892,6 +924,48 @@ function addDaily(){
     acct:acctName, acctLink:(me&&me.link)||'', persona:(me&&me.persona)||'', status:''});
   save(); renderDaily(); renderMeta();
   toast('已上报 · 浏览 '+(+($('#dViews')?$('#dViews').value:0)||0)+' · 客资 '+cx+' 个');
+}
+
+/* 修改已经上报过的笔记：标题、链接、日期、数据、文案、备注都能改 */
+function openDailyEdit(id){
+  const it = (state.daily||[]).find(x=>x.id===id);
+  if(!it){ toast('这条记录已经不在了'); return; }
+  const acctOpts = (state.accounts||[]).map(a=>'<option'+((a.name===it.acct)?' selected':'')+' value="'+esc(a.name)+'">'+esc(a.name)+'</option>').join('');
+  showModal('修改这条上报 · '+(it.date||''),
+    '<div class="hint-box">改完点「保存修改」，你本机和主管那边都会跟着更新（自动同步，不用再发汇总码）。</div>'+
+    '<div class="daily-form">'+
+      '<div class="field"><label>账号</label>'+(acctOpts?('<select class="inp" id="eAcct">'+acctOpts+'</select>'):('<input class="inp" id="eAcct" value="'+esc(it.acct||SESSION.name)+'">'))+'</div>'+
+      '<div class="field"><label>发布日期</label><input class="inp" id="eDate" type="date" value="'+esc(it.date||todayStr())+'"></div>'+
+      '<div class="field full"><label>笔记标题</label><input class="inp" id="eTitle" value="'+esc(it.title||'')+'"></div>'+
+      '<div class="field full"><label>笔记链接</label><input class="inp" id="eLink" value="'+esc(it.link||'')+'" placeholder="https://..."></div>'+
+      '<div class="field"><label>浏览量</label><input class="inp" id="eViews" type="number" value="'+(+it.views||0)+'"></div>'+
+      '<div class="field"><label>点赞</label><input class="inp" id="eLike" type="number" value="'+(+it.like||0)+'"></div>'+
+      '<div class="field"><label>评论</label><input class="inp" id="eCmt" type="number" value="'+(+it.cmt||0)+'"></div>'+
+      '<div class="field"><label>客资（加到几个微信）</label><input class="inp" id="eCx" type="number" value="'+(+it.cx||0)+'"></div>'+
+      '<div class="field full"><label>备注</label><input class="inp" id="eNote" value="'+esc(it.note||'')+'"></div>'+
+      '<div class="field full"><label>笔记文案（可以重新粘贴覆盖）</label><textarea class="inp" id="eBody" rows="8">'+esc(it.body||'')+'</textarea></div>'+
+    '</div>',
+    [{t:'取消', fn:closeModal},{t:'保存修改', primary:true, fn:()=>{
+      const cur = (state.daily||[]).find(x=>x.id===id);
+      if(!cur){ closeModal(); return; }
+      const title = ($('#eTitle')?($('#eTitle').value||'').trim():'');
+      if(!title){ toast('标题不能为空'); return; }
+      const acctName = ($('#eAcct')?($('#eAcct').value||'').trim():'') || cur.acct || SESSION.name;
+      const me = (state.accounts||[]).find(a=>a.name===acctName) || null;
+      cur.title = title;
+      cur.link = normLink($('#eLink')?($('#eLink').value||''):'');
+      cur.date = ($('#eDate')?$('#eDate').value:'') || cur.date || todayStr();
+      cur.views = +($('#eViews')?$('#eViews').value:0)||0;
+      cur.like = +($('#eLike')?$('#eLike').value:0)||0;
+      cur.cmt = +($('#eCmt')?$('#eCmt').value:0)||0;
+      cur.cx = Math.max(0, +($('#eCx')?$('#eCx').value:0)||0);
+      cur.note = ($('#eNote')?($('#eNote').value||'').trim():'');
+      cur.body = ($('#eBody')?$('#eBody').value:'');
+      cur.acct = acctName;
+      if(me){ cur.acctLink = me.link||''; cur.persona = me.persona||''; }
+      save(); closeModal(); renderDaily(); renderMeta();
+      toast('已保存修改');
+    }}]);
 }
 
 /* 内置素材池：让员工单独拿到这个 html 也能立刻看到素材，不用等主管发同步码。

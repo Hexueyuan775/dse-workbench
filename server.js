@@ -14,7 +14,7 @@ const crypto = require('crypto');
 const os = require('os');
 
 const PORT = Number(process.env.PORT || 3000);
-const BUILD = 'v5-2026-10-29';
+const BUILD = 'v6-2026-10-30';
 const ROOT = __dirname;
 const PUB = path.join(ROOT, 'public');
 const DATA_DIR = process.env.DSE_DATA_DIR || path.join(ROOT, 'data');
