@@ -14,7 +14,7 @@ const crypto = require('crypto');
 const os = require('os');
 
 const PORT = Number(process.env.PORT || 3000);
-const BUILD = 'v8-2026-10-31';
+const BUILD = 'v8.1-2026-11-08';
 const ROOT = __dirname;
 const PUB = path.join(ROOT, 'public');
 const DATA_DIR = process.env.DSE_DATA_DIR || path.join(ROOT, 'data');
@@ -26,6 +26,13 @@ const KV_URL = String(process.env.UPSTASH_REDIS_REST_URL || '').trim().replace(/
 const KV_TOKEN = String(process.env.UPSTASH_REDIS_REST_TOKEN || '').trim();
 const KV_KEY = String(process.env.DSE_KV_KEY || 'dse:db').trim();
 const useKV = !!(KV_URL && KV_TOKEN);
+/* 云端存储请求最多等多久。以前没有超时：Upstash 一旦不可达，请求会一直挂着，
+   启动流程卡死、端口不监听，浏览器就表现为「能连上但一直转圈打不开」。 */
+const KV_TIMEOUT = Number(process.env.DSE_KV_TIMEOUT || 8000) || 8000;
+
+/* 云端数据「就绪」状态：只有成功从 Upstash 读到数据才算就绪。
+   未就绪时既不做写操作，也不把内存里的空库推回云端，避免覆盖掉真实数据。 */
+const kvState = { ready: !useKV, ok: false, error: '', tries: 0, at: 0 };
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -89,16 +96,45 @@ function writeFile(){
   }catch(e){ console.error('[DB] 保存失败：' + e.message); }
 }
 
-async function kvCmd(cmd){
-  const r = await fetch(KV_URL, {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + KV_TOKEN, 'Content-Type': 'application/json' },
-    body: JSON.stringify(cmd)
-  });
-  let j = null;
-  try { j = await r.json(); } catch (_) {}
-  if (!r.ok || !j || j.error) throw new Error((j && j.error) || ('HTTP ' + r.status));
-  return j.result;
+async function kvCmd(cmd, timeoutMs){
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, timeoutMs || KV_TIMEOUT);
+  try{
+    const r = await fetch(KV_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + KV_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify(cmd),
+      signal: ctrl.signal
+    });
+    let j = null;
+    try { j = await r.json(); } catch (_) {}
+    if (!r.ok || !j || j.error) throw new Error((j && j.error) || ('HTTP ' + r.status));
+    return j.result;
+  }catch(e){
+    if (e && e.name === 'AbortError') throw new Error('云端存储超时（' + (timeoutMs || KV_TIMEOUT) + 'ms 无响应）');
+    throw e;
+  }finally{ clearTimeout(timer); }
+}
+
+/* 启动时在后台把云端数据拉下来；失败就一直隔一会儿重试，永远不会挡住端口监听 */
+async function loadKV(){
+  kvState.tries++;
+  try{
+    const raw = await kvCmd(['GET', KV_KEY]);
+    db = raw ? normalizeDB(JSON.parse(raw)) : normalizeDB(freshDB());
+    kvState.ready = true; kvState.ok = true; kvState.error = ''; kvState.at = Date.now();
+    console.log('[KV] 云端存储已连接：' + KV_URL + '（员工 ' + db.roster.length + ' 人）');
+    try { compactNs(true); } catch (e) { console.error('[NS] 旧命名空间合并失败：' + e.message); }
+  }catch(e){
+    kvState.ok = false;
+    kvState.error = String((e && e.message) || e);
+    console.error('[KV] 读取云端数据失败（第 ' + kvState.tries + ' 次）：' + kvState.error);
+    console.error('[KV] 请检查 Render 里的 UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN 是否填对');
+    if (!kvState.ready){
+      const wait = Math.min(30000, 1000 * kvState.tries);
+      setTimeout(loadKV, wait);
+    }
+  }
 }
 
 async function kvPump(){
@@ -117,7 +153,13 @@ async function kvPump(){
 }
 
 function persist(){
-  if (useKV){ kvDirty = true; kvPump(); return; }
+  if (useKV){
+    if (!kvState.ready){
+      console.warn('[KV] 云端数据还没加载好，这次改动暂不写云端（避免用空库覆盖真实数据）');
+      return;
+    }
+    kvDirty = true; kvPump(); return;
+  }
   writeFile();
 }
 function saveDB(){
@@ -211,7 +253,19 @@ function publicRoster(){
 /* ---------------- API ---------------- */
 async function handleApi(req, res, u, p){
   if (p === '/api/ping'){
-    return send(res, 200, { ok: true, app: 'dse-workbench', build: BUILD, employees: db.roster.length, rev: db.rev, storage: useKV ? 'kv' : 'file' });
+    return send(res, 200, {
+      ok: true, app: 'dse-workbench', build: BUILD,
+      employees: db.roster.length, rev: db.rev,
+      storage: useKV ? 'kv' : 'file',
+      kvReady: kvState.ready, kvOk: kvState.ok, kvError: kvState.error || null,
+      uptimeSec: Math.round(process.uptime())
+    });
+  }
+
+  /* 云端数据还没加载好（Upstash 慢/连不上）时，先明确告诉前端在恢复，
+     而不是返回空数据让页面看起来「数据全没了」。 */
+  if (useKV && !kvState.ready){
+    return send(res, 503, { ok: false, loading: true, error: '云端数据正在重新连接，请 10 秒后再试一次' });
   }
 
   /* 登录：主管用口令，员工用名单里的昵称 */
@@ -412,18 +466,14 @@ function startServer(){
   });
 }
 
-/* 先（如果是云端模式）把数据拉下来，再开始对外服务 */
-(async function boot(){
-  if (useKV){
-    try {
-      const raw = await kvCmd(['GET', KV_KEY]);
-      if (raw) db = normalizeDB(JSON.parse(raw));
-      console.log('[KV] 云端存储已连接：' + KV_URL);
-    } catch (e) {
-      console.error('[KV] 读取云端数据失败：' + e.message);
-      console.error('[KV] 请检查 Render 里的 UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN 是否填对');
-    }
-  }
-  try { compactNs(true); } catch (e) { console.error('[NS] 旧命名空间合并失败：' + e.message); }
+/* 先把端口监听起来，再在后台加载云端数据。
+   这样即使 Upstash 慢/不可达，Render 也能立刻认为服务已启动、页面能打开，
+   不会出现「连得上但一直转圈打不开」。 */
+(function boot(){
   startServer();
+  if (useKV){
+    loadKV();
+  } else {
+    try { compactNs(true); } catch (e) { console.error('[NS] 旧命名空间合并失败：' + e.message); }
+  }
 })();
