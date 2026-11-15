@@ -4114,7 +4114,16 @@ function renderAssign(){
     '<button class="btn primary" id="asCreate">创建并分配给 TA</button>'+
   '</div>';
 
-  html += '<div class="a-sec"><h4>批量导入<span class="sub">CSV 格式；先预览，确认后才写入</span></h4>'+
+  html += '<div class="a-sec"><h4>一次分配多条<span class="sub">一行一个选题，直接用粘贴，不用 CSV</span></h4>'+
+    '<div class="c-note" style="margin-bottom:8px">上面选的<b>员工、账号、项目、受众、内容类型、截止、优先级、要求</b>会套用到这一批全部任务；去重规则同批量导入。</div>'+
+    '<textarea class="inp" id="asLines" rows="6" placeholder="例如：&#10;内地转 DSE 第一年最容易踩的 3 个坑&#10;DSE 英文 5** 的作文结构拆解&#10;家长最常问的 5 个升学问题"></textarea>'+
+    '<div class="row" style="gap:8px;align-items:center;margin-top:8px">'+
+      '<button class="btn primary" id="asCreateMany">批量创建</button>'+
+      '<span class="c-note" id="asLineCnt" style="margin:0">一行一个选题</span>'+
+    '</div>'+
+  '</div>';
+
+  html += '<div class="a-sec"><h4>从 Excel / CSV 导入<span class="sub">可选；适合不同员工、不同截止日期的混合批次</span></h4>'+
     '<div class="c-note" style="margin-bottom:8px">列顺序：员工,账号,选题标题,项目,受众,内容类型,截止日期,优先级,具体要求。重复任务（同员工+同账号+同标题+同截止）会自动跳过。</div>'+
     '<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">'+
       '<input type="file" id="asFile" accept=".csv,text/csv" style="font-size:12px">'+
@@ -4173,6 +4182,48 @@ function renderAssign(){
       $('#asTitle').value = ''; $('#asBrief').value = '';
       aLoad();
     }).catch(e=>{ btn.disabled=false; btn.textContent='创建并分配给 TA'; toast(e.message||'创建失败'); });
+  };
+
+  const lineTitles = ()=> ($('#asLines').value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const refreshCnt = ()=>{
+    const n = lineTitles().length;
+    $('#asLineCnt').textContent = n ? ('将创建 '+n+' 条') : '一行一个选题';
+  };
+  $('#asLines').oninput = refreshCnt;
+  $('#asCreateMany').onclick = ()=>{
+    const all = lineTitles();
+    if(!all.length){ toast('先把选题粘进来，一行一个'); return; }
+    if(all.length > 200){ toast('一次最多 200 条，请分批粘贴'); return; }
+    const uniq = [], repeat = [];
+    all.forEach(x=>{ if(uniq.indexOf(x)>=0) repeat.push(x); else uniq.push(x); });
+    const emp = $('#asEmp').value;
+    const ac = $('#asAcct');
+    const acctId = ac.value || '';
+    const acctName = ac.value ? (ac.options[ac.selectedIndex].text||'').split('（')[0] : '';
+    const base = {emp:emp, acctId:acctId, acctName:acctName,
+      project:$('#asProject').value, audience:$('#asAudience').value, ctype:$('#asType').value,
+      due:$('#asDue').value, priority:$('#asPriority').value, brief:$('#asBrief').value||''};
+    const rows = uniq.map(title=> Object.assign({}, base, {title:title}));
+    const btn = $('#asCreateMany'); btn.disabled = true; btn.textContent = '创建中…';
+    aApi('POST', {action:'import', rows:rows}).then(d=>{
+      btn.disabled = false; btn.textContent = '批量创建';
+      const n = (d.created||[]).length, sk = (d.skipped||[]).length;
+      toast(d.__staged ? ('已创建 '+n+' 条，云端稍后自动写入') : ('已创建 '+n+' 条'+(sk?('，跳过 '+sk+' 条'):'')));
+      $('#asLines').value = '';
+      if(!sk && !repeat.length){ aLoad(); return; }
+      const why = {};
+      (d.skipped||[]).forEach(x=>{ const k=x.reason||'未创建'; (why[k]=why[k]||[]).push(x.title||('第'+x.row+'行')); });
+      aLoad().then(()=>{
+        showModal('批量分配结果',
+          '<div class="c-note">成功 <b>'+n+'</b> 条，跳过 <b>'+(sk+repeat.length)+'</b> 条：</div>'+
+          (sk ? Object.keys(why).map(k=>'<div class="c-note" style="margin-top:6px"><b>'+esc(k)+'</b>：'+esc(why[k].slice(0,30).join('、'))+'</div>').join('') : '')+
+          (repeat.length ? '<div class="c-note" style="margin-top:6px"><b>粘贴内容里有重复</b>：'+esc(repeat.slice(0,30).join('、'))+'</div>' : ''),
+          [{t:'知道了', primary:true, fn:closeModal}]);
+      });
+    }).catch(e=>{
+      btn.disabled = false; btn.textContent = '批量创建';
+      toast(e.message||'批量创建失败');
+    });
   };
 
   $('#asTpl').onclick = ()=>{
