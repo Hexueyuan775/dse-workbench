@@ -4128,6 +4128,22 @@ function renderAssign(){
     '<div id="asResult" style="margin-top:10px"></div>'+
   '</div>';
 
+  const editable = A_TASK.filter(t=>['已发布','已完成'].indexOf(t.status)<0)
+    .sort((a,b)=> String(a.due||'9999-12-31').localeCompare(String(b.due||'9999-12-31')));
+  html += '<div class="a-sec"><h4>已分配任务<span class="sub">派错了可以在这里改，或者撤回</span></h4>';
+  if(!editable.length){
+    html += '<div class="c-note">还没有进行中的任务。上面创建一条，就会出现在这里。</div>';
+  }else{
+    html += '<div class="imp-tb"><table><thead><tr><th>员工</th><th>账号</th><th>选题</th><th>截止</th><th>状态</th><th>操作</th></tr></thead><tbody>'+
+      editable.slice(0,200).map(t=>'<tr><td>'+esc(t.emp)+'</td><td>'+esc(t.acctName||'—')+'</td><td>'+esc(t.title||'')+'</td>'+
+        '<td>'+esc(t.due||'—')+'</td><td>'+aSt(t.status)+'</td>'+
+        '<td><button class="btn sm" data-edit-task="'+esc(t.id)+'">编辑</button> '+
+        '<button class="btn sm" data-del-task="'+esc(t.id)+'">撤回</button></td></tr>').join('')+
+      '</tbody></table></div>'+
+      '<div class="c-note" style="margin-top:6px">共 '+editable.length+' 条进行中。已发布 / 已完成的任务不能改也不能撤回（会影响线上笔记）。撤回会记一条审计日志，事后可追溯。</div>';
+  }
+  html += '</div>';
+
   $('#panelBody').innerHTML = html;
 
   const fillAccts = ()=>{
@@ -4173,6 +4189,81 @@ function renderAssign(){
   };
   $('#asPreview').onclick = ()=> aPreview();
   $('#asImport').onclick = ()=> aImport();
+  $$('#panelBody [data-edit-task]').forEach(b=> b.onclick = ()=> openTaskEdit(b.dataset.editTask));
+  $$('#panelBody [data-del-task]').forEach(b=> b.onclick = ()=> aDeleteTask(b.dataset.delTask));
+}
+
+/* 修改已分配任务（含改派给别的员工） */
+function openTaskEdit(id){
+  const t = A_TASK.find(x=>x.id===id);
+  if(!t){ toast('任务不存在，请刷新后重试'); return; }
+  if(['已发布','已完成'].indexOf(t.status)>=0){ toast('已发布 / 已完成的任务不能修改'); return; }
+  const emps = aAssignEmps();
+  const opts = (list, cur)=> list.map(x=>'<option'+(x===cur?' selected':'')+'>'+esc(x)+'</option>').join('');
+  const body = '<div class="a-form">'+
+    '<div class="field"><label>负责人</label><select class="inp" id="teEmp">'+opts(emps, t.emp)+'</select></div>'+
+    '<div class="field"><label>所属账号</label><select class="inp" id="teAcct"></select></div>'+
+    '<div class="field full"><label>选题标题</label><input class="inp" id="teTitle" maxlength="60" value="'+esc(t.title||'')+'"></div>'+
+    '<div class="field"><label>所属项目</label><select class="inp" id="teProject">'+opts(['摘星','遵理','DSE通用'], t.project||'DSE通用')+'</select></div>'+
+    '<div class="field"><label>目标受众</label><select class="inp" id="teAudience">'+opts(['家长','学生'], t.audience||'家长')+'</select></div>'+
+    '<div class="field"><label>内容类型</label><select class="inp" id="teType">'+opts(['流量型','信任型','转化型','日常'], t.ctype||'日常')+'</select></div>'+
+    '<div class="field"><label>截止日期</label><input class="inp" id="teDue" type="date" value="'+esc(t.due||'')+'"></div>'+
+    '<div class="field"><label>优先级</label><select class="inp" id="tePriority">'+opts(['高','中','低'], t.priority||'中')+'</select></div>'+
+    '<div class="field full"><label>具体要求（可选）</label><textarea class="inp" id="teBrief" rows="3">'+esc(t.brief||'')+'</textarea></div>'+
+  '</div>'+
+  '<div class="c-note" style="margin-top:8px">当前状态：'+esc(t.status||'待领取')+'。改负责人＝把这条任务改派给另一个人，原员工那边会立刻看不到。</div>';
+  showModal('修改任务 · '+t.emp, body, [
+    {t:'取消', fn:closeModal},
+    {t:'保存修改', primary:true, fn:()=> aSaveTaskEdit(t.id)}
+  ]);
+  const fill = ()=>{
+    const emp = $('#teEmp').value;
+    const list = aEmpAccounts(emp);
+    if(!list.length){
+      $('#teAcct').innerHTML = '<option value="">（该员工还没登记账号，可留空）</option>';
+      return;
+    }
+    $('#teAcct').innerHTML = list.map(a=>{
+      const on = (t.acctId && a.id===t.acctId) || (!t.acctId && a.name===t.acctName);
+      return '<option value="'+esc(a.id||'')+'"'+(on?' selected':'')+'>'+esc(a.name||'')+(a.persona?'（'+esc(a.persona)+'）':'')+'</option>';
+    }).join('');
+  };
+  fill();
+  $('#teEmp').onchange = fill;
+}
+function aSaveTaskEdit(id){
+  const t = A_TASK.find(x=>x.id===id);
+  if(!t){ toast('任务不存在'); return; }
+  const title = ($('#teTitle').value||'').trim();
+  if(!title){ toast('选题标题不能为空'); return; }
+  const ac = $('#teAcct');
+  const acctId = ac.value || '';
+  const acctName = ac.value ? String(ac.options[ac.selectedIndex].text||'').replace(/（.*$/,'') : '';
+  const payload = {action:'update', id:id, emp:$('#teEmp').value, title:title, acctId:acctId, acctName:acctName,
+    project:$('#teProject').value, audience:$('#teAudience').value, ctype:$('#teType').value,
+    due:$('#teDue').value, priority:$('#tePriority').value, brief:$('#teBrief').value||''};
+  const btns = $$('#modal .modal-foot .btn');
+  const btn = btns[btns.length-1];
+  if(btn){ btn.disabled = true; btn.textContent = '保存中…'; }
+  aApi('POST', payload).then(d=>{
+    closeModal();
+    toast(d.__staged ? '已保存，云端稍后自动写入' : '已保存');
+    aLoad();
+  }).catch(e=>{
+    if(btn){ btn.disabled = false; btn.textContent = '保存修改'; }
+    toast(e.message||'保存失败');
+  });
+}
+/* 撤回任务：员工那边立刻看不到；已发布/已完成不允许撤回 */
+function aDeleteTask(id){
+  const t = A_TASK.find(x=>x.id===id);
+  if(!t){ toast('任务不存在'); return; }
+  if(['已发布','已完成'].indexOf(t.status)>=0){ toast('已发布 / 已完成的任务不能撤回'); return; }
+  if(!confirm('确认撤回「'+(t.title||'')+'」？撤回后 '+t.emp+' 那边就看不到了。')) return;
+  aApi('POST', {action:'delete', id:id}).then(d=>{
+    toast(d.__staged ? '已撤回，云端稍后自动写入' : '已撤回');
+    aLoad();
+  }).catch(e=> toast(e.message||'撤回失败'));
 }
 function parseCsv(text){
   const rows = []; let row = [], cur = '', q = false;
@@ -4967,7 +5058,8 @@ function renderRosterCard(){
       '<td><select class="inp rs-pf" data-i="'+i+'" style="height:30px;min-width:84px">'+
         [['摘星','摘星'],['遵理','遵理'],['','通用']].map(p=>'<option value="'+p[0]+'"'+(e.persona===p[0]?' selected':'')+'>'+p[1]+'</option>').join('')+
       '</select></td>'+
-      '<td><input class="inp rs-pw" data-i="'+i+'" value="'+esc(e.pass||'')+'" placeholder="留空=免密码" style="height:30px;min-width:92px"></td>'+
+      '<td><input class="inp rs-pw" data-i="'+i+'" value="" placeholder="'+(e.hasPass?'已设置，留空不改':'留空=免密码')+'" style="height:30px;min-width:92px">'+
+        (e.hasPass?' <button class="link-btn rs-clear" data-i="'+i+'">清除</button>':'')+'</td>'+
       '<td style="font-size:11.5px;min-width:120px">'+empSyncBadge(e.name||'')+'</td>'+
       '<td style="text-align:center"><input type="checkbox" class="rs-on" data-i="'+i+'"'+(e.active!==false?' checked':'')+'></td>'+
       '<td><button class="link-btn rs-del" data-i="'+i+'">删除</button></td>'+
@@ -4981,7 +5073,7 @@ function renderRosterCard(){
       '<button class="link-btn" id="rsPass">🔑 改主管口令</button>'+
     '</div>'+
     '<div class="adm-detail">'+
-      '<div class="hint-box">只有这里录入的昵称<b>才能</b>登录员工版；没录入的员工会提示「不在名单里」。<br>人设方向决定他默认出<b>摘星</b>还是<b>遵理</b>的选题；密码留空就是只填昵称即可登录。<br><b>员工一登录、上报，数据会自动同步到你这里</b>（下面「同步状态」能看到），<b>不需要他发汇总码</b>。</div>'+
+      '<div class="hint-box">只有这里录入的昵称<b>才能</b>登录员工版；没录入的员工会提示「不在名单里」。<br>人设方向决定他默认出<b>摘星</b>还是<b>遵理</b>的选题；<b>密码留空＝这个人只填昵称就能登录，别人知道昵称也能进</b>，建议每个人都设一个密码。<br>密码框留空＝不改原密码，点「清除」才会取消密码。<br><b>员工一登录、上报，数据会自动同步到你这里</b>（下面「同步状态」能看到），<b>不需要他发汇总码</b>。</div>'+
       (list.length
         ? '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px"><thead><tr style="text-align:left;color:#8b8f99"><th style="padding:4px 6px">昵称</th><th style="padding:4px 6px">人设方向</th><th style="padding:4px 6px">密码</th><th style="padding:4px 6px">同步状态</th><th style="text-align:center;padding:4px 6px">启用</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
         : '<div class="empty-tip">还没有录入员工，点上面「+ 添加员工」写昵称，再点「保存名单」</div>')+
@@ -5018,6 +5110,20 @@ function bindRosterCard(){
   const add = $('#rsAdd');
   if(add) add.onclick = ()=>{ const l = rosterCache(); l.push({name:'', persona:'', pass:'', active:true}); lsSet(ROSTER_KEY, l); renderAdminPanel(); };
   $$('.rs-del').forEach(b=> b.onclick = ()=>{ const l = rosterCache(); l.splice(+b.dataset.i,1); lsSet(ROSTER_KEY, l); renderAdminPanel(); });
+  $$('.rs-clear').forEach(b=> b.onclick = ()=>{
+    const i = +b.dataset.i;
+    const nm = ((rosterCache()[i]||{}).name||'').trim();
+    if(!nm) return;
+    if(!confirm('确认取消「'+nm+'」的密码？取消后任何人输入这个昵称就能登录，看到他的内容。')) return;
+    const list = collectRosterForm();
+    const hit = list.find(x=>x.name===nm);
+    if(!hit){ toast('这个员工还没有保存到名单里'); return; }
+    hit.clearPass = true;
+    __cloud.saveRoster(list).then(r=>{
+      lsSet(ROSTER_KEY, r); renderAdminPanel();
+      toast('已取消密码。建议尽快重新设一个。');
+    }).catch(e=> toast(e.message||'操作失败'));
+  });
   $$('.rs-nolink').forEach(a=> a.onclick = (ev)=>{ ev.preventDefault(); toast('这个员工的账号还没填主页链接：让他在员工版「我的选题」→ 点自己的账号 → 补上主页链接'); });
   const pull = $('#rsPull');
   if(pull) pull.onclick = ()=>{

@@ -2994,6 +2994,13 @@ function mergeTask(t){
 }
 function loadTasks(){
   if(!(window.__cloud && __cloud.online)) return Promise.resolve(TASK);
+  /* 只有员工会话才能拉任务；主管或异常会话一律清空，绝不显示别人的任务 */
+  const s = (window.__cloud.session && window.__cloud.session()) || null;
+  if(!s || s.role !== 'emp'){
+    TASK = [];
+    renderMeta();
+    return Promise.resolve(TASK);
+  }
   return taskApi('GET').then(d=>{
     TASK = Array.isArray(d.tasks) ? d.tasks : [];
     if(d.cfg) TASK_CFG = d.cfg;
@@ -3408,6 +3415,11 @@ function init(){
   $('#overlay').onclick = e=>{ if(e.target.id==='overlay') closeModal(); };
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
   loadTasks();
+  /* 主管改派 / 撤回后，这里最多 45 秒自动同步一次；切回页面也会立刻刷新 */
+  if(!window.__taskTimer){
+    window.__taskTimer = setInterval(()=>{ if(!document.hidden) loadTasks(); }, 45000);
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) loadTasks(); });
+  }
 }
 function boot(){
   const lp = $('#lnkPersona'); if(lp) lp.href = FEISHU.persona;
@@ -3416,6 +3428,7 @@ function boot(){
   $('#gateName').onkeydown = e=>{ if(e.key==='Enter') enter(); };
   // 网站版：登录信息从登录页带过来，云端拉一次数据再渲染
   const s = (window.__cloud && __cloud.session && __cloud.session());
+  if(s && s.role==='admin'){ location.replace('admin.html'); return; }   // 主管会话不进员工台
   if(s && s.role==='emp'){ cloudEnter(s); return; }
   if(window.__cloud && __cloud.online && !s){ location.replace('index.html'); return; }
   $('#gate').classList.add('show');

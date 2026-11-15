@@ -14,7 +14,7 @@ const crypto = require('crypto');
 const os = require('os');
 
 const PORT = Number(process.env.PORT || 3000);
-const BUILD = 'v9.1-2026-11-15';
+const BUILD = 'v9.2-2026-11-15';
 const SCHEMA = 2;                 // 数据结构版本号（备份清单里会带上）
 const ROOT = __dirname;
 const PUB = path.join(ROOT, 'public');
@@ -1117,10 +1117,16 @@ async function handleApi(req, res, u, p){
         const nm = String((raw && raw.name) || '').trim().slice(0, 24);
         if (!nm || seen[nm]) continue;
         seen[nm] = 1;
+        const old = db.roster.find(x => x.name === nm);
+        let pw = String(raw.pass == null ? '' : raw.pass).trim().slice(0, 24);
+        /* 密码框留空＝不改（名单接口不回传密码，避免编辑别处时把密码冲掉）；
+           要取消密码必须显式传 clearPass:true */
+        if (raw.clearPass === true) pw = '';
+        else if (!pw && old) pw = old.pass || '';
         out.push({
           name: nm,
           persona: (raw.persona === '摘星' || raw.persona === '遵理') ? raw.persona : '',
-          pass: String(raw.pass || '').slice(0, 24),
+          pass: pw,
           active: raw.active !== false,
           note: String(raw.note || '').slice(0, 40),
           at: raw.at || Date.now()
@@ -1162,7 +1168,9 @@ async function handleApi(req, res, u, p){
     if (me.r === 'admin'){
       return send(res, 200, { ok: true, role: 'admin', tasks: allTasks(), cfg: cfg, roster: publicRoster(), rev: db.rev });
     }
-    return send(res, 200, { ok: true, role: 'emp', tasks: taskList(me.ns), rev: db.rev });
+    /* 员工只返回「负责人是自己」的任务；即使命名空间里混进别人的数据也不带出去 */
+    const mine = taskList(me.ns).filter(t => t && t.emp === me.n);
+    return send(res, 200, { ok: true, role: 'emp', tasks: mine, rev: db.rev });
   }
 
   if (p === '/api/task' && req.method === 'POST'){
@@ -1238,7 +1246,7 @@ async function handleApi(req, res, u, p){
     if (['saveDraft', 'submit', 'publish', 'done'].indexOf(action) >= 0){
       const hit = findTask(b.id);
       if (!hit) return send(res, 404, { ok: false, error: '任务不存在' });
-      if (!isAdmin && hit.ns !== me.ns) return send(res, 403, { ok: false, error: '不能操作别人的任务' });
+      if (!isAdmin && (hit.ns !== me.ns || hit.task.emp !== me.n)) return send(res, 403, { ok: false, error: '不能操作别人的任务' });
       const t = hit.task;
       const title = String(b.title == null ? '' : b.title).trim().slice(0, 120);
       const body = String(b.body == null ? '' : b.body);
@@ -1292,7 +1300,57 @@ async function handleApi(req, res, u, p){
       return persistOr503(res, { task: t });
     }
 
-    /* ④ 主管审核：通过 / 退回修改 / 否决 */
+    /* ④ 主管修改任务 / 撤回任务 */
+    if (action === 'update' || action === 'delete'){
+      if (!isAdmin) return send(res, 403, { ok: false, error: '只有主管可以修改或撤回任务' });
+      const hit = findTask(b.id);
+      if (!hit) return send(res, 404, { ok: false, error: '任务不存在' });
+      const t = hit.task;
+      if ([ST.PUB, ST.DONE].indexOf(t.status) >= 0){
+        return send(res, 409, { ok: false, error: '已发布/已完成的任务不能改或撤回，否则会和线上笔记对不上' });
+      }
+
+      if (action === 'delete'){
+        const list = taskList(hit.ns);
+        const i = list.findIndex(x => x.id === t.id);
+        if (i >= 0) list.splice(i, 1);
+        saveTaskList(hit.ns, list);
+        /* 留一份审计快照，方便事后追查 */
+        const lg = nsRead('admin', 'dse_wb_admin_tasklog_v2', []);
+        const arr = Array.isArray(lg) ? lg : [];
+        arr.unshift({ at: Date.now(), by: who, action: 'delete', taskId: t.id, emp: t.emp, title: t.title, status: t.status, snapshot: t });
+        nsWrite('admin', 'dse_wb_admin_tasklog_v2', arr.slice(0, 500));
+        return persistOr503(res, { removed: t.id });
+      }
+
+      const v = cleanTaskInput(b);
+      if (!v.title) return send(res, 400, { ok: false, error: '选题标题不能为空' });
+      const newEmp = String(b.emp || '').trim() || t.emp;
+      if (newEmp !== t.emp){
+        const person = db.roster.find(x => x.name === newEmp);
+        if (!person) return send(res, 400, { ok: false, error: '新负责人不在员工名单里' });
+        const from = taskList(hit.ns);
+        const i = from.findIndex(x => x.id === t.id);
+        if (i >= 0) from.splice(i, 1);
+        saveTaskList(hit.ns, from);
+        const nns = empNs(newEmp);
+        const to = taskList(nns);
+        Object.assign(t, v, { emp: newEmp, empNs: nns, acctName: v.acctName || t.acctName || '' });
+        pushLog(t, who, '改派给 ' + newEmp, '');
+        to.unshift(t);
+        saveTaskList(nns, to);
+        return persistOr503(res, { task: t });
+      }
+      Object.assign(t, v, { acctName: v.acctName || t.acctName || '' });
+      pushLog(t, who, '修改任务', '');
+      const list = taskList(hit.ns);
+      const i = list.findIndex(x => x.id === t.id);
+      if (i >= 0) list[i] = t;
+      saveTaskList(hit.ns, list);
+      return persistOr503(res, { task: t });
+    }
+
+    /* ⑤ 主管审核：通过 / 退回修改 / 否决 */
     if (action === 'review'){
       if (!isAdmin) return send(res, 403, { ok: false, error: '只有主管可以审核' });
       const hit = findTask(b.id);
