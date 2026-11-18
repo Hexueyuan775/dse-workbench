@@ -14,7 +14,7 @@ const crypto = require('crypto');
 const os = require('os');
 
 const PORT = Number(process.env.PORT || 3000);
-const BUILD = 'v9.2-2026-11-15';
+const BUILD = 'v9.3-2026-11-18';
 const SCHEMA = 2;                 // 数据结构版本号（备份清单里会带上）
 const ROOT = __dirname;
 const PUB = path.join(ROOT, 'public');

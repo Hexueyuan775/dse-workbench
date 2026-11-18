@@ -3121,10 +3121,10 @@ function bindPersonaChips(rerender){
   $$('#panelBody [data-pfilter]').forEach(el=> el.onclick = ()=>{ state.personaFilter = el.dataset.pfilter; save(); rerender(); });
 }
 function sumNotes(rows){
-  const t={n:0,cx:0,like:0,cmt:0,views:0,emp:{}};
+  const t={n:0,cx:0,like:0,cmt:0,views:0,dm:0,emp:{}};
   rows.forEach(r=>{
     const x=r.x, nm=r.emp.name;
-    t.n++; t.cx+=+x.cx||0; t.like+=+x.like||0; t.cmt+=+x.cmt||0; t.views+=+x.views||0;
+    t.n++; t.cx+=+x.cx||0; t.like+=+x.like||0; t.cmt+=+x.cmt||0; t.views+=+x.views||0; t.dm+=+x.dm||0;
     if(!t.emp[nm]) t.emp[nm]={n:0,cx:0,views:0,titles:[]};
     const o=t.emp[nm];
     o.n++; o.cx+=+x.cx||0; o.views+=+x.views||0;
@@ -3135,6 +3135,10 @@ function sumNotes(rows){
 /* 客资备注：每条笔记一条标注（家长数 / 其他人数 / 来源 / 备注），只存主管本机 */
 function cxMetaAll(){ try{ return JSON.parse(localStorage.getItem('dse_admin_cx_meta_v2')||'{}'); }catch(e){ return {}; } }
 function saveCxMetaAll(o){ try{ localStorage.setItem('dse_admin_cx_meta_v2', JSON.stringify(o)); }catch(e){} }
+/* 推给橙子老师成功：按笔记登记成功人数，由主管确认（员工无法自己填） */
+function orangeAll(){ try{ return JSON.parse(localStorage.getItem('dse_admin_orange_v2')||'{}'); }catch(e){ return {}; } }
+function saveOrangeAll(o){ try{ localStorage.setItem('dse_admin_orange_v2', JSON.stringify(o)); }catch(e){} }
+function orangeOf(key){ return Math.max(0, +orangeAll()[key]||0); }
 function cxKey(ns, id){ return ns+'|'+id; }
 function cxMetaOf(ns, id){ return cxMetaAll()[cxKey(ns,id)]||{}; }
 function cxRowsAll(){
@@ -3351,6 +3355,8 @@ function renderLeadPanel(){
         '<select class="mini" data-cxsrc="'+esc(r.key)+'">'+
           [['','来源：未标注'],['截流','截流'],['笔记引流','笔记引流'],['其他','其他']].map(t=>'<option value="'+t[0]+'"'+(m.src===t[0]?' selected':'')+'>'+t[1]+'</option>').join('')+'</select>'+
         '<input class="mini" style="flex:1;min-width:160px" data-cxnote="'+esc(r.key)+'" value="'+esc(m.note||'')+'" placeholder="备注：家长需要什么服务 / 其他人情况">'+
+        '<label class="c-note" style="margin:0">推橙子成功</label><input class="mini" style="width:58px" type="number" max="'+(+r.cx||0)+'" data-orange="'+esc(r.key)+'" value="'+Math.min(orangeOf(r.key), +r.cx||0)+'">'+
+        '<span class="c-note" style="margin:0">/ '+(+r.cx||0)+' 个</span>'+
       '</div></div>';
   }).join('');
 
@@ -3358,6 +3364,7 @@ function renderLeadPanel(){
     '<div class="pad">'+
       '<div class="hint-box"><b>客资只记数量，不再记微信号。</b>微信号直接发到群里；这里按月统计每个员工带来多少客资。<br>'+
         '每篇笔记一块，你可以标：<b>家长 / 其他人各几个</b>、来源是<b>截流</b>还是<b>这篇笔记引流</b>、以及备注。<br>'+
+        '<b>「推橙子成功」只能在这里由你确认</b>：这篇加到的微信里有几个人成功推给橙子老师，填数字，不能超过这篇的客资数。主页的橙子成功率就按这里算。<br>'+
         '标注只存在你本机；导出的 CSV 可以直接导入飞书多维表格。</div>'+
       personaChips()+
       '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center">'+
@@ -3391,6 +3398,19 @@ function renderLeadPanel(){
   $$('#panelBody [data-cxo]').forEach(el=> el.onchange=()=> saveMeta(el.dataset.cxo,{other:Math.max(0,+el.value||0)},'其他人数已保存'));
   $$('#panelBody [data-cxsrc]').forEach(el=> el.onchange=()=> saveMeta(el.dataset.cxsrc,{src:el.value},'来源已记录'));
   $$('#panelBody [data-cxnote]').forEach(el=> el.onchange=()=> saveMeta(el.dataset.cxnote,{note:(el.value||'').trim()},'备注已保存'));
+
+  const caps = {};
+  rows.forEach(r=>{ caps[r.key] = +r.cx||0; });
+  $$('#panelBody [data-orange]').forEach(el=> el.onchange=()=>{
+    const k = el.dataset.orange;
+    const cap = caps[k]||0;
+    const v = Math.max(0, Math.min(cap, +el.value||0));
+    el.value = v;
+    const m = orangeAll();
+    if(v>0) m[k]=v; else delete m[k];
+    saveOrangeAll(m);
+    toast('推橙子成功数已保存');
+  });
 }
 function renderLeadStats(month){
   const rows = cxRowsAll().filter(r=> r.date.slice(0,7)===month && cxRowMatch(r));
@@ -4006,13 +4026,33 @@ function aAssignEmps(){
 }
 
 /* ---------------- 运营总览 ---------------- */
+/* 汇总一段笔记：发帖数、浏览（=小眼睛）、私信、加微信、主管确认的推橙子成功数 */
+function convStats(rows){
+  const om = orangeAll();
+  const t = {n:0, views:0, dm:0, cx:0, orange:0};
+  rows.forEach(r=>{
+    const x = r.x;
+    t.n++;
+    t.views += +x.views||0;
+    t.dm += +x.dm||0;
+    const cx = +x.cx||0;
+    t.cx += cx;
+    t.orange += Math.min(Math.max(0, +om[cxKey(r.emp.ns, x.id)]||0), cx);
+  });
+  return t;
+}
 function renderOps(){
   const emps = listEmployees();
+  const today = localDate();
   const wk = aWeekStart();
-  let pubNotes = 0, newCx = 0;
-  emps.forEach(e=> (e.daily||[]).forEach(n=>{
-    if(String(n.date||'') >= wk){ pubNotes++; newCx += (+n.cx||0); }
-  }));
+  const mStart = today.slice(0,7)+'-01';
+  const per = state.opsPeriod || 'all';
+  const perName = {week:'本周', month:'本月', all:'累计'};
+  let rows = allNotes().filter(r=> matchPersona(r.emp,r.x));
+  if(per==='week') rows = rows.filter(r=> r.date>=wk && r.date<=today);
+  else if(per==='month') rows = rows.filter(r=> r.date>=mStart && r.date<=today);
+  const T = convStats(rows);
+
   const wait = A_TASK.filter(t=>t.status==='待审核');
   const overdue = A_TASK.filter(t=>aOverdue(t));
   const passed = A_TASK.filter(t=>t.status==='已通过');
@@ -4020,17 +4060,42 @@ function renderOps(){
   const low = lowEfficiency(emps);
   const transferPending = 0;   // 转交确认在 P2 上线，这里如实显示 0，不编数据
 
+  const pct = (a,b)=> b>0 ? (a/b*100).toFixed(1)+'%' : '—';
   const card = (k,v,sub)=> '<div class="stat"><div class="k">'+k+'</div><div class="v">'+v+'</div>'+
     (sub?'<div class="g" style="font-size:11.5px;color:var(--txt-3);margin-top:2px">'+sub+'</div>':'')+'</div>';
+  const perBtns = ['all','month','week'].map(k=>
+    '<button class="chip'+(per===k?' active':'')+'" data-operiod="'+k+'">'+perName[k]+'</button>').join('');
+  const fm = Math.max(1, T.views);
+  const stage = (k,v,c,rate)=>{
+    const w = v>0 ? Math.max(4, Math.round(v/fm*100)) : 0;
+    return '<div style="display:flex;align-items:center;gap:10px;margin:9px 0">'+
+      '<div style="width:132px;font-size:12.5px;color:#5b6068;flex:none">'+k+'</div>'+
+      '<div style="flex:1;height:24px;background:#f6f7f9;border-radius:6px;overflow:hidden">'+
+        (w?'<div style="height:100%;width:'+w+'%;background:'+c+';border-radius:6px"></div>':'')+'</div>'+
+      '<div style="width:156px;text-align:right;flex:none"><b style="font-size:14.5px">'+v.toLocaleString()+'</b>'+
+        (rate?' <span style="font-size:12px;color:#999">'+rate+'</span>':'')+'</div></div>';
+  };
 
-  let html = '<div class="a-grid" style="grid-template-columns:repeat(3,1fr)">'+
-    card('本周已发布笔记', pubNotes, '按笔记发布日期统计（周一至今）')+
-    card('本周新增微信客资', newCx, '员工上报的 cx 合计')+
-    card('本周待审核稿件', wait.length, '需要你处理的初稿')+
-    card('本周逾期任务', overdue.length, '过了截止时间还没交')+
-    card('待确认转交客资', transferPending, '转交确认功能在 P2 上线')+
-    card('需要复盘的低效账号', low.length, '至少 3 篇且浏览低于团队均值一半')+
+  let html = '<div class="a-sec"><h4>核心数据<span class="sub">'+perName[per]+' · 员工上报后自动汇总</span></h4>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px"><span class="c-note" style="margin:0;flex:none">统计范围</span>'+perBtns+'</div>'+
+    personaChips()+
+    '<div class="a-grid" style="grid-template-columns:repeat(3,1fr)">'+
+      card('发帖总量', T.n+' <span style="font-size:13px;color:#999">篇</span>', perName[per]+'已上报的笔记数')+
+      card('小眼睛曝光总量', T.views.toLocaleString(), '小红书小眼睛 = 笔记浏览量')+
+      card('笔记浏览量', T.views.toLocaleString(), '与上一项同源，按篇累加')+
+      card('平台私信率', pct(T.dm,T.views), '私信 '+T.dm+' ÷ 浏览 '+T.views.toLocaleString())+
+      card('添加到个人微信率', pct(T.cx,T.dm), '加微信 '+T.cx+' ÷ 私信 '+T.dm)+
+      card('推给橙子老师成功率', pct(T.orange,T.cx), '已确认 '+T.orange+' ÷ 加微信 '+T.cx)+
+    '</div>'+
+    '<div class="c-note" style="margin-top:8px;line-height:1.9">三个率按漏斗逐级计算：浏览 → 私信 → 加微信 → 推橙子。推橙子成功数由你在「客资统计」里逐条确认，没确认的不计入。</div>'+
   '</div>';
+
+  html += '<div class="a-sec"><h4>转化漏斗<span class="sub">'+perName[per]+'，从浏览到成交</span></h4>'+
+    stage('笔记浏览（小眼睛）', T.views, '#d81e3f', '')+
+    stage('平台私信', T.dm, '#e04a5f', pct(T.dm,T.views))+
+    stage('加到个人微信', T.cx, '#ef8a3c', pct(T.cx,T.dm))+
+    stage('推给橙子老师成功', T.orange, '#a8122c', pct(T.orange,T.cx))+
+    '</div>';
 
   html += '<div class="a-sec"><h4>待处理事项<span class="sub">按重要性排序，点进去就是真实记录</span></h4>';
   const item = (n, key, txt, sub)=> '<div class="a-item'+(n?'':' zero')+'" data-k="'+key+'">'+
@@ -4052,6 +4117,10 @@ function renderOps(){
     '</div></div>';
 
   $('#panelBody').innerHTML = html;
+  $$('#panelBody [data-operiod]').forEach(el=> el.onclick = ()=>{
+    state.opsPeriod = el.dataset.operiod; save(); renderOps();
+  });
+  bindPersonaChips(renderOps);
   $$('#panelBody .a-item').forEach(el=> el.onclick = ()=>{
     const k = el.dataset.k;
     if(k==='wait'){ A_FILTER.st='待审核'; switchTab('review2'); }
@@ -4545,7 +4614,7 @@ function openExempt(){
    16. Tab 切换 & 初始化
    ========================================================= */
 const PAGE_META = {
-  ops:     {crumb:'运营', title:'运营总览', sub:'本周产出、客资、待审核和异常，都在这一页。'},
+  ops:     {crumb:'运营', title:'运营总览', sub:'发帖、小眼睛曝光、浏览和三层转化率，一页看完。'},
   review2: {crumb:'运营', title:'内容审核', sub:'看初稿、写意见、通过或退回；敏感内容必须逐条看。'},
   assign:  {crumb:'运营', title:'任务分配', sub:'单条派任务，或一次导入多条；导入先预览再确认。'},
   board:   {crumb:'任务工作区', title:'任务看板', sub:'把今天每个人要发的笔记排好，一眼看到谁发了、谁还没动。'},
