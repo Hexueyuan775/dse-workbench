@@ -79,6 +79,7 @@
   var flushing = null;     // 正在进行的推送
   var pulling = false;
   var started = false;
+  var booted = false;      // 首次成功拉取云端数据之前，禁止推送（防止空库覆盖云端）
   var lastRev = 0;         // 拉取用的版本水位（员工=本 ns 版本；主管=全库版本）
   var myNsRev = 0;         // 我推送目标命名空间的版本（用于并发校验 baseRev）
   var conflictTries = 0;
@@ -209,13 +210,20 @@
     if (sess.role === 'admin') return k.indexOf('dse_wb_admin_') === 0 || k.indexOf('dse_admin_') === 0;
     return k.indexOf('dse_wb_' + sess.ns + '_') === 0;
   }
+  /* 能不能落到本机：主管要把「全员数据」也存进本机，后台统计才看得到；
+     但推送仍然只推自己那份（isMine），避免把员工数据写进主管命名空间。 */
+  function canStore(k) {
+    if (!sess) return false;
+    if (sess.role === 'admin') return /^dse_(wb_|admin_)/.test(k);
+    return k.indexOf('dse_wb_' + sess.ns + '_') === 0;
+  }
 
   /* 把服务器上的 kv 写进本机 localStorage，返回真正变化的条数
      注意：本地还没推上去的键（dirty）跳过，避免用旧数据把员工刚填的内容冲掉 */
   function applyKv(kv) {
     var n = 0;
     Object.keys(kv || {}).forEach(function (k) {
-      if (!isMine(k)) return;
+      if (!canStore(k)) return;
       if (Object.prototype.hasOwnProperty.call(dirty, k)) return;
       var v = kv[k];
       if (typeof v !== 'string') return;
@@ -224,6 +232,22 @@
       } catch (e) {}
     });
     return n;
+  }
+
+  /* 首次拉取时：本机待推送的数据先和云端并集，避免「本机是空数组/旧数据」
+     把云端的日报冲掉。只在启动阶段生效一次。 */
+  function mergeDirtyWithKv(kv) {
+    Object.keys(dirty).forEach(function (k) {
+      var sv = kv[k];
+      if (typeof sv !== 'string') return;
+      var out = unionById(dirty[k], sv);
+      if (out === null && /_drafts_v2$/.test(k)) out = unionDrafts(dirty[k], sv);
+      if (out !== null && out !== dirty[k]) {
+        dirty[k] = out;
+        try { localStorage.setItem(k, out); } catch (e) {}
+      }
+    });
+    savePending();
   }
 
   /* 拉自己（主管：拉全员） */
@@ -238,22 +262,36 @@
       if (!d || d.ok === false) return 0;
       if (d.unchanged) {
         if (isAdmin && typeof d.nsRev === 'number') myNsRev = d.nsRev;
+        booted = true;
+        flushLater();
         return 0;
       }
+      var kv = {};
       if (isAdmin) {
-        var kv = {};
         Object.keys(d.ns || {}).forEach(function (ns) {
           var o = d.ns[ns] || {};
           Object.keys(o.kv || {}).forEach(function (k) { kv[k] = o.kv[k]; });
         });
         lastRev = d.rev || lastRev;
         if (typeof d.nsRev === 'number') myNsRev = d.nsRev;
-        return applyKv(kv) + compactLocal();
+      } else {
+        kv = d.kv || {};
+        lastRev = (typeof d.rev === 'number') ? d.rev : lastRev;
+        myNsRev = (typeof d.rev === 'number') ? d.rev : myNsRev;
       }
-      lastRev = (typeof d.rev === 'number') ? d.rev : lastRev;
-      myNsRev = (typeof d.rev === 'number') ? d.rev : myNsRev;
-      return applyKv(d.kv || {}) + compactLocal();
+      /* 启动后的第一次拉取：本机待推送的内容先和云端并集，再允许推送 */
+      if (!booted) mergeDirtyWithKv(kv);
+      booted = true;
+      var n = applyKv(kv) + compactLocal();
+      flushLater();
+      return n;
     }).catch(function () { pulling = false; return 0; });
+  }
+
+  /* 启动阶段合并完成后，把并集补推回云端（服务端也会做一次并集兜底） */
+  function flushLater() {
+    if (!Object.keys(dirty).length) return;
+    setTimeout(function () { flush().catch(function () {}); }, 0);
   }
 
   /* 页面每次保存都会调用这里（由 lsSet 触发） */
@@ -332,6 +370,8 @@
   function flush() {
     if (flushing) return flushing;
     if (!online || !sess) return Promise.resolve();
+    /* 首屏还没拉过云端：本机可能是空库，绝不能先推上去把云端数据冲掉 */
+    if (!booted) { setStatus('pending'); return Promise.resolve(); }
     var batch = {}, has = 0;
     Object.keys(dirty).forEach(function (k) {
       if (!isMine(k)) return;
@@ -396,12 +436,10 @@
 
   function tick() {
     if (document.hidden || !online || !sess) return;
-    /* 有没推上去的改动就顺手推一次；如果已经在退避等待，就别再额外加压力 */
-    var pre = (Object.keys(dirty).length && !retryTimer ? flush() : Promise.resolve());
-    pre.then(function () {
-      return pull().then(function (n) {
-        if (n > 0 && onRemote) { try { onRemote(); } catch (e) {} }
-      });
+    /* 先拉再推：保证本机拿到云端最新版，再合并推送，避免旧数据盖新数据 */
+    pull().then(function (n) {
+      if (n > 0 && onRemote) { try { onRemote(); } catch (e) {} }
+      if (Object.keys(dirty).length && !retryTimer) return flush();
     });
   }
 

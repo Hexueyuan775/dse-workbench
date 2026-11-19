@@ -14,7 +14,7 @@ const crypto = require('crypto');
 const os = require('os');
 
 const PORT = Number(process.env.PORT || 3000);
-const BUILD = 'v9.3-2026-11-18';
+const BUILD = 'v9.4-2026-11-19';
 const SCHEMA = 2;                 // 数据结构版本号（备份清单里会带上）
 const ROOT = __dirname;
 const PUB = path.join(ROOT, 'public');
@@ -719,6 +719,36 @@ function serverNotes(){
   return out;
 }
 
+/* 防丢合并：日报/任务这类「带 id 的数组」，云端已有的条目不会被更短的数组冲掉。
+   员工端删记录时会在 _trash_v2 里留下 id，这里按 id 过滤，所以删除依然生效。 */
+function protectDaily(ns, key, oldStr, newStr){
+  if (!/(_daily_v2|_tasks_v2)$/.test(key)) return newStr;
+  let a, b;
+  try { a = JSON.parse(oldStr || '[]'); } catch (e){ return newStr; }
+  try { b = JSON.parse(newStr || '[]'); } catch (e){ return newStr; }
+  if (!Array.isArray(a) || !Array.isArray(b) || !a.length) return newStr;
+  const idOf = x => (x && typeof x === 'object' && x.id != null) ? String(x.id) : '';
+  if (!a.every(idOf) || !b.every(idOf)) return newStr;
+  const trash = {};
+  try {
+    const t = JSON.parse((((db.ns[ns] || {}).kv) || {})['dse_wb_' + ns + '_trash_v2'] || '[]');
+    if (Array.isArray(t)) t.forEach(x => { const id = String((x && x.id) || x); if (id) trash[id] = 1; });
+  } catch (e) {}
+  const seen = {}, out = [];
+  b.forEach(x => {
+    const id = idOf(x);
+    if (trash[id]) return;
+    if (!seen[id]) { seen[id] = 1; out.push(x); }
+  });
+  a.forEach(x => {
+    const id = idOf(x);
+    if (!id || trash[id] || seen[id]) return;
+    seen[id] = 1;
+    out.push(x);
+  });
+  return out.length === b.length ? newStr : JSON.stringify(out);
+}
+
 async function crmEnsureNotesTable(){
   const c = crmCfg();
   const tables = await fsTables();
@@ -1032,8 +1062,9 @@ async function handleApi(req, res, u, p){
     let n = 0;
     Object.keys(patch).forEach(k => {
       if (!/^dse_(wb_|admin_)/.test(k)) return;         // 只接受工作台的键
-      const v = patch[k];
+      let v = patch[k];
       if (typeof v !== 'string') return;
+      v = protectDaily(me.ns, k, rec.kv[k], v);         // 云端已有的日报条目不会被短数组冲掉
       if (rec.kv[k] !== v){ rec.kv[k] = v; n++; }
     });
     if (n){
@@ -1090,8 +1121,9 @@ async function handleApi(req, res, u, p){
     let n = 0;
     Object.keys(patch).forEach(k => {
       if (!/^dse_(wb_|admin_)/.test(k)) return;
-      const v = patch[k];
+      let v = patch[k];
       if (typeof v !== 'string') return;
+      v = protectDaily(ns, k, rec.kv[k], v);            // 主管导入/恢复也不会把云端日报冲少
       if (rec.kv[k] !== v){ rec.kv[k] = v; n++; }
     });
     if (n){ rec.rev = (rec.rev || 0) + 1; rec.at = Date.now(); db.rev++; }

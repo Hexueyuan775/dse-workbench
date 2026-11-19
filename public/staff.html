@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="cloud.js?v=3"></script>
+<script src="cloud.js?v=4"></script>
 <link rel="stylesheet" href="theme.css?v=7">
 <title>DSE 内容工作台 · 员工版</title>
 <style>
@@ -330,6 +330,18 @@ function loadState(){
   state.daily = lsGet(key('daily'), []);
   state.check = lsGet(key('check'), {date:'',done:{}}) || {date:'',done:{}};
   if(state.check.date !== todayStr()) state.check = {date: todayStr(), done:{}};
+  /* 删除标记：云端按 id 合并日报时，只有这里列出来的记录才会被真正删掉 */
+  state.trash = lsGet(key('trash'), []);
+  if(!Array.isArray(state.trash)) state.trash = [];
+}
+/* 记下被删掉的记录 id，防止「云端并集防丢」把删掉的记录又补回来 */
+function trashDaily(ids){
+  const add = (Array.isArray(ids)?ids:[ids]).map(x=>String(x||'')).filter(Boolean);
+  if(!add.length) return;
+  const set = {};
+  (Array.isArray(state.trash)?state.trash:[]).forEach(id=> set[String(id)] = 1);
+  add.forEach(id=> set[id] = 1);
+  state.trash = Object.keys(set).slice(-1000);
 }
 function save(){
   lsSet(key('pool'), state.pool);
@@ -340,6 +352,7 @@ function save(){
   lsSet(key('kw'), state.kw);
   lsSet(key('topics'), state.topics);
   lsSet(key('drafts'), state.drafts);
+  lsSet(key('trash'), state.trash);
   lsSet(key('daily'), state.daily);
   lsSet(key('check'), state.check);
   lsSet(key('who'), SESSION.name);
@@ -354,7 +367,7 @@ function autoPullSeed(){
     if(s.batch > cur){
       const before = state.pool.length;
       state.pool = poolToItems(s.items, s.batch);
-      if(state.pool.length !== before) toast('素材库已更新为最新一批（'+state.pool.length+' 条）');
+      if(state.pool.length !== before){ toast('素材库已更新为最新一批（'+state.pool.length+' 条）'); save(); }
     }
     normalizePool();
   }catch(e){}
@@ -937,7 +950,7 @@ function renderDaily(){
   if(cxIn) cxIn.oninput = ()=>{ cxIn.value = String(Math.max(0, +cxIn.value||0)); };
   $('#dAdd').onclick = addDaily;
   $$('#panelBody [data-daily]').forEach(el=> el.onchange=()=>{ const it=state.daily.find(x=>x.id===el.dataset.daily); if(it){ it[el.dataset.f]=+el.value||0; save(); } });
-  $$('#panelBody [data-deldaily]').forEach(el=> el.onclick=()=>{ state.daily=state.daily.filter(x=>x.id!==el.dataset.deldaily); save(); renderDaily(); });
+  $$('#panelBody [data-deldaily]').forEach(el=> el.onclick=()=>{ trashDaily(el.dataset.deldaily); state.daily=state.daily.filter(x=>x.id!==el.dataset.deldaily); save(); renderDaily(); });
   $$('#panelBody [data-copyrep]').forEach(el=> el.onclick=()=>{ const it=state.daily.find(x=>x.id===el.dataset.copyrep); if(it) copyText(dailyText(it)); });
   $$('#panelBody [data-editdaily]').forEach(el=> el.onclick=()=> openDailyEdit(el.dataset.editdaily));
   $$('#panelBody [data-viewbody]').forEach(el=> el.onclick=()=>{
@@ -948,7 +961,7 @@ function renderDaily(){
       [{t:'关闭', fn:closeModal}]);
   });
   const ca=$('#dCopyAll'); if(ca) ca.onclick=()=>{ if(!state.daily.length){ toast('还没有上报记录'); return; } copyText(state.daily.map(dailyText).join('\n\n————————\n\n')); };
-  const cl=$('#dClear'); if(cl) cl.onclick=()=>{ if(confirm('清空本地上报记录？（清空前建议先「导出汇总码」发给主管）')){ state.daily=[]; save(); renderDaily(); } };
+  const cl=$('#dClear'); if(cl) cl.onclick=()=>{ if(confirm('清空本地上报记录？（清空前建议先「导出汇总码」发给主管）')){ trashDaily(state.daily.map(x=>x.id)); state.daily=[]; save(); renderDaily(); } };
 }
 function addDaily(){
   const title = ($('#dTitle').value||'').trim();
@@ -3464,7 +3477,8 @@ function enter(){
   if(!name){ $('#gateErr').textContent='请先填一个代号或昵称'; return; }
   setNamespace('u_'+hashStr(name).toString(36));
   SESSION = {name};
-  loadState(); autoPullSeed(); save();
+  /* 不再在首屏无条件 save：网站版会先拉云端再合并，避免用空数组把云端日报冲掉 */
+  loadState(); autoPullSeed();
   $('#gate').classList.remove('show');
   $('#app').style.display = 'flex';
   init();
